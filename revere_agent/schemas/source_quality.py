@@ -19,6 +19,9 @@ SourceType = Literal[
     "think_tank",
     "academic",
     "polling",
+    "reference",
+    "encyclopedia",
+    "nonprofit_reference",
     "blog",
     "unknown",
 ]

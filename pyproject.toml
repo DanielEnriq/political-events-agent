@@ -16,8 +16,10 @@ dev = [
 ]
 
 [project.scripts]
-# Convenience entry point. After `uv sync`, run: `uv run revere-hello`
+# Day 1 hello-world (single-stage smoke test).
 revere-hello = "revere_agent.cli.hello:main"
+# Day 2 reasoning pipeline (S1→S5 + trace).
+revere-run = "revere_agent.cli.run:main"
 
 [build-system]
 requires = ["hatchling"]

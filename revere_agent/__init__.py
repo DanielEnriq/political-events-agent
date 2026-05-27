@@ -1,1 +1,0 @@
-"""Political Events Agent package."""

@@ -178,6 +178,25 @@ def test_structured_output_helper_imports_and_signature() -> None:
         assert name in sig.parameters, f"missing kwarg: {name}"
 
 
+def test_source_assessment_accepts_new_reference_types() -> None:
+    from revere_agent.schemas import SourceAssessment
+
+    common = {
+        "url": "https://example.org",
+        "authority_reasoning": "Reference source",
+        "recency_assessment": "N/A",
+        "likely_editorial_slant": "unclear",
+        "slant_evidence": "Neutral index style content",
+        "primary_vs_secondary": "tertiary",
+        "relevance_to_query": 3,
+        "confidence_in_source": 3,
+    }
+
+    for source_type in ("reference", "encyclopedia", "nonprofit_reference"):
+        assessment = SourceAssessment(source_type=source_type, **common)
+        assert assessment.source_type == source_type
+
+
 def test_llm_provider_protocol_is_structural() -> None:
     """AnthropicProvider and BedrockProvider both satisfy the Protocol."""
     from revere_agent.llm import AnthropicProvider, BedrockProvider, LLMProvider
