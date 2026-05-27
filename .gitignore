@@ -12,3 +12,9 @@ wheels/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Local run outputs
+benchmark_*.txt
+day3_*.txt
+output*.txt
+debug_*.txt
