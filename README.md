@@ -97,6 +97,33 @@ Deliverables
 - Technical notes explaining design decisions.
 - Loom demo showing all required scenarios.
 
-Status
+## Running the UIs
 
-Initial setup. Implementation in progress.
+### Gradio UI (all-in-one, no extra dependencies)
+
+```bash
+uv run revere-ui
+# → http://localhost:7860
+```
+
+### Next.js UI + FastAPI backend
+
+Terminal 1 — Python SSE backend:
+```bash
+uv run revere-api
+# → http://localhost:8000
+```
+
+Terminal 2 — Next.js dev server:
+```bash
+cd web
+npm install    # first time only
+npm run dev
+# → http://localhost:3000
+```
+
+The Next.js dev server proxies `/api/*` to `http://localhost:8000` — no CORS configuration needed.
+
+## Status
+
+S1→S7 reasoning pipeline complete. Both Gradio and Next.js UIs working. 60 tests pass.

@@ -9,6 +9,8 @@ dependencies = [
     "pydantic>=2.7.0",
     "python-dotenv>=1.0.0",
     "gradio>=4.44.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
 ]
 
 [dependency-groups]
@@ -23,6 +25,8 @@ revere-hello = "revere_agent.cli.hello:main"
 revere-run = "revere_agent.cli.run:main"
 # Day 4 Gradio UI.
 revere-ui = "revere_agent.ui.gradio_app:main"
+# Day 5 FastAPI backend for Next.js UI.
+revere-api = "api.server:main"
 
 [build-system]
 requires = ["hatchling"]
