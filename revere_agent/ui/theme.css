@@ -1,0 +1,747 @@
+/* Revere — civic intelligence console theme */
+
+:root {
+  --revere-bg: #0a0a0a;
+  --revere-panel: #141414;
+  --revere-panel-elevated: #1a1a1a;
+  --revere-border: #2a2a2a;
+  --revere-border-subtle: #222222;
+  --revere-text: #f5f0e8;
+  --revere-text-muted: #a8a29e;
+  --revere-accent: #c9b896;
+  --revere-accent-soft: #8b9bb5;
+  --revere-success: #7d9a7a;
+  --revere-warning: #c4a35a;
+  --revere-danger: #b87a7a;
+  --revere-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --revere-serif: Georgia, "Times New Roman", serif;
+  --revere-sans: Inter, Helvetica, Arial, sans-serif;
+}
+
+.gradio-container {
+  background: var(--revere-bg) !important;
+  color: var(--revere-text) !important;
+  font-family: var(--revere-sans) !important;
+  max-width: 1440px !important;
+}
+
+/* ── Compact header ──────────────────────────────────────── */
+
+.revere-header {
+  padding: 0.5rem 0 0.4rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--revere-border);
+}
+
+.revere-header h1 {
+  font-family: var(--revere-serif) !important;
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  color: var(--revere-text) !important;
+  margin: 0 0 0.15rem 0 !important;
+  line-height: 1.2 !important;
+}
+
+.revere-subtitle {
+  color: var(--revere-text-muted) !important;
+  font-size: 0.82rem !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Legacy hero — kept so old references still render */
+.revere-hero { margin-bottom: 0.25rem; }
+.revere-hero h1 {
+  font-family: var(--revere-serif) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  color: var(--revere-text) !important;
+  margin-bottom: 0.25rem !important;
+}
+.revere-hero p { color: var(--revere-text-muted) !important; line-height: 1.5 !important; }
+.revere-runtime-note { display: none; }
+
+/* ── Composer card (textarea + controls + send) ──────────── */
+
+#revere-composer {
+  background: var(--revere-panel) !important;
+  border: 1px solid var(--revere-border) !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  margin-top: 0.45rem !important;
+  transition: border-color 0.2s ease !important;
+}
+
+#revere-composer:focus-within {
+  border-color: #3a3a3a !important;
+}
+
+.gradio-container #revere-composer textarea,
+.gradio-container #revere-input textarea {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0.75rem 0.9rem 0.4rem !important;
+  resize: none !important;
+  font-size: 0.94rem !important;
+  line-height: 1.6 !important;
+  color: var(--revere-text) !important;
+}
+
+/* ── Composer controls row ───────────────────────────────── */
+
+#revere-controls-row {
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.18rem 0.7rem !important;
+  flex-wrap: nowrap !important;
+  border-top: 1px solid var(--revere-border-subtle) !important;
+}
+
+#revere-controls-row label,
+#revere-controls-row .label-wrap span {
+  font-size: 0.71rem !important;
+  letter-spacing: 0.01em !important;
+  color: var(--revere-text-muted) !important;
+  text-transform: none !important;
+}
+
+#revere-controls-row input[type="range"] {
+  accent-color: var(--revere-accent);
+}
+
+/* ── Composer send row ───────────────────────────────────── */
+
+#revere-send-row {
+  padding: 0.25rem 0.55rem 0.4rem !important;
+  gap: 0.4rem !important;
+}
+
+/* ── Audit panel section header ──────────────────────────── */
+
+.revere-audit-header {
+  font-family: var(--revere-serif);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--revere-text-muted);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--revere-border);
+}
+
+/* ── Support hint (empty state) ──────────────────────────── */
+
+.revere-support-hint {
+  color: var(--revere-text-muted);
+  font-size: 0.86rem;
+  font-style: italic;
+  padding: 0.75rem 0.25rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Stable two-column layout ────────────────────────────── */
+
+#revere-main-row {
+  align-items: stretch !important;
+  gap: 0.85rem !important;
+}
+
+#revere-right-col {
+  max-height: calc(100vh - 195px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scroll-behavior: smooth;
+  padding-right: 0.1rem;
+}
+
+#revere-right-col::-webkit-scrollbar { width: 4px; }
+#revere-right-col::-webkit-scrollbar-track { background: transparent; }
+#revere-right-col::-webkit-scrollbar-thumb {
+  background: var(--revere-border);
+  border-radius: 2px;
+}
+#revere-right-col::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+/* ── Standard card ───────────────────────────────────────── */
+
+.revere-card {
+  background: var(--revere-panel);
+  border: 1px solid var(--revere-border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.revere-card:hover {
+  border-color: #363636;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.3);
+}
+
+.revere-card-header {
+  font-family: var(--revere-serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--revere-accent);
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--revere-border-subtle);
+  background: var(--revere-panel-elevated);
+}
+
+.revere-card-body {
+  padding: 0.75rem 0.85rem;
+  color: var(--revere-text);
+  line-height: 1.65;
+  font-size: 0.91rem;
+}
+
+.revere-card-body p { margin: 0 0 0.55rem 0; }
+.revere-card-body p:last-child { margin-bottom: 0; }
+
+/* ── Collapsible detail-card (timeline, timing, search, trace) */
+
+.revere-details-card {
+  background: var(--revere-panel);
+  border: 1px solid var(--revere-border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.revere-details-card:hover {
+  border-color: #363636;
+}
+
+.revere-details-card > summary.revere-details-summary {
+  font-family: var(--revere-serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--revere-accent);
+  padding: 0.5rem 0.85rem;
+  background: var(--revere-panel-elevated);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.revere-details-card > summary.revere-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.revere-details-card > summary.revere-details-summary::after {
+  content: "▸";
+  color: var(--revere-text-muted);
+  font-size: 0.7rem;
+  font-family: var(--revere-sans);
+  transition: transform 0.18s ease;
+}
+
+.revere-details-card[open] > summary.revere-details-summary::after {
+  transform: rotate(90deg);
+}
+
+.revere-details-card[open] > summary.revere-details-summary {
+  border-bottom: 1px solid var(--revere-border-subtle);
+}
+
+.revere-details-card-body {
+  padding: 0.75rem 0.85rem;
+  color: var(--revere-text);
+  line-height: 1.65;
+  font-size: 0.91rem;
+}
+
+.revere-details-card-body p { margin: 0 0 0.5rem 0; }
+.revere-details-card-body p:last-child { margin-bottom: 0; }
+
+/* ── Final answer ────────────────────────────────────────── */
+
+.revere-final-answer {
+  font-size: 1rem;
+  line-height: 1.78;
+}
+
+/* ── Muted ───────────────────────────────────────────────── */
+
+.revere-muted {
+  color: var(--revere-text-muted);
+  font-size: 0.86rem;
+}
+
+/* ── Badges ──────────────────────────────────────────────── */
+
+.revere-badge {
+  display: inline-block;
+  padding: 0.13rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--revere-border);
+  margin-right: 0.3rem;
+  margin-bottom: 0.2rem;
+}
+
+.revere-badge-neutral { color: var(--revere-text-muted); background: #1f1f1f; }
+.revere-badge-ok    { color: #d4e8d2; background: #1a2a1a; border-color: #2d4a2d; }
+.revere-badge-warn  { color: #f0e0b8; background: #2a2418; border-color: #4a4028; }
+.revere-badge-accent { color: var(--revere-accent); background: #1f1c16; border-color: #3d3628; }
+
+/* ── Compact mode badge ──────────────────────────────────── */
+
+.revere-mode-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0;
+  margin-bottom: 0.45rem;
+}
+
+.revere-mode-detail {
+  color: var(--revere-text-muted);
+  font-size: 0.77rem;
+  line-height: 1.3;
+}
+
+/* Legacy mode-banner — still used if referenced from old code */
+.revere-mode-banner {
+  background: linear-gradient(135deg, #121212 0%, #181818 100%);
+  border: 1px solid var(--revere-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+.revere-mode-banner strong { color: var(--revere-accent); font-family: var(--revere-serif); }
+.revere-mode-banner ul {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+  color: var(--revere-text-muted);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+/* ── Timeline rows (folded, one per stage) ───────────────── */
+
+.revere-timeline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.26rem 0.05rem;
+  border-bottom: 1px solid var(--revere-border-subtle);
+  transition: background 0.15s ease;
+}
+
+.revere-timeline-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.revere-timeline-row.is-active {
+  background: rgba(201, 184, 150, 0.03);
+}
+
+.revere-timeline-left {
+  width: 1rem;
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+  display: flex;
+  justify-content: center;
+}
+
+.revere-timeline-content { flex: 1; min-width: 0; }
+
+/* Animated pulse dot — active stage */
+.revere-timeline-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--revere-accent);
+  animation: revere-pulse 1.35s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.revere-timeline-dot-done {
+  color: var(--revere-success);
+  font-size: 0.72rem;
+  display: inline-block;
+  width: 0.75rem;
+  text-align: center;
+}
+
+.revere-timeline-dot-stop {
+  color: var(--revere-warning);
+  font-size: 0.72rem;
+  display: inline-block;
+  width: 0.75rem;
+  text-align: center;
+}
+
+.revere-timeline-dot-pending {
+  color: var(--revere-border);
+  font-size: 1rem;
+  line-height: 0.9;
+  display: inline-block;
+  width: 0.75rem;
+  text-align: center;
+}
+
+.revere-timeline-row.is-active   .revere-timeline-title { color: var(--revere-accent); }
+.revere-timeline-row.is-complete  .revere-timeline-title { color: var(--revere-text); }
+.revere-timeline-row.is-stopped   .revere-timeline-title { color: var(--revere-warning); }
+
+.revere-timeline-running {
+  font-size: 0.77rem;
+  color: var(--revere-text-muted);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--revere-border-subtle);
+  font-style: italic;
+}
+
+/* Legacy timeline items — kept for format_progress_event test compat */
+.revere-timeline-item {
+  border-left: 2px solid var(--revere-border);
+  padding: 0.3rem 0 0.3rem 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.revere-timeline-item.is-active   { border-left-color: var(--revere-accent); }
+.revere-timeline-item.is-complete { border-left-color: var(--revere-success); }
+.revere-timeline-item.is-stopped  { border-left-color: var(--revere-warning); }
+
+.revere-timeline-title {
+  font-weight: 600;
+  color: var(--revere-text);
+  font-size: 0.84rem;
+}
+
+.revere-timeline-summary {
+  color: var(--revere-text-muted);
+  font-size: 0.78rem;
+  margin-top: 0.12rem;
+  line-height: 1.4;
+}
+
+.revere-timeline-timing {
+  color: var(--revere-accent-soft);
+  font-family: var(--revere-mono);
+  font-size: 0.71rem;
+  margin-left: 0.25rem;
+}
+
+/* ── Pulse animation ─────────────────────────────────────── */
+
+@keyframes revere-pulse {
+  0%,  100% { opacity: 1;    transform: scale(1);   }
+  50%        { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ── Compact source cards ────────────────────────────────── */
+
+.revere-source-card-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.36rem 0.6rem;
+  background: var(--revere-panel-elevated);
+  border: 1px solid var(--revere-border-subtle);
+  border-radius: 7px;
+  margin-bottom: 0.28rem;
+  transition: border-color 0.15s ease;
+}
+
+.revere-source-card-compact:hover { border-color: #383838; }
+
+.revere-source-card-compact .revere-source-index {
+  font-family: var(--revere-mono);
+  font-size: 0.7rem;
+  color: var(--revere-accent);
+  min-width: 1.25rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.revere-source-card-compact .revere-source-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.revere-source-card-compact .revere-source-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--revere-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.revere-source-card-compact .revere-source-title a {
+  color: var(--revere-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--revere-border);
+}
+
+.revere-source-card-compact .revere-source-title a:hover {
+  color: var(--revere-accent);
+  border-bottom-color: var(--revere-accent);
+}
+
+.revere-source-card-compact .revere-source-domain {
+  color: var(--revere-accent-soft);
+  font-size: 0.7rem;
+  font-family: var(--revere-mono);
+  flex-shrink: 0;
+}
+
+.revere-source-card-compact .revere-source-used {
+  color: var(--revere-text-muted);
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Legacy full source card */
+.revere-source-card {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--revere-panel-elevated);
+  border: 1px solid var(--revere-border-subtle);
+  border-radius: 8px;
+  margin-bottom: 0.42rem;
+}
+
+.revere-source-index {
+  font-family: var(--revere-mono);
+  font-size: 0.77rem;
+  color: var(--revere-accent);
+  min-width: 1.5rem;
+  font-weight: 700;
+}
+
+.revere-source-title {
+  font-weight: 600;
+  color: var(--revere-text);
+}
+
+.revere-source-title a {
+  color: var(--revere-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--revere-border);
+}
+
+.revere-source-title a:hover {
+  color: var(--revere-accent);
+  border-bottom-color: var(--revere-accent);
+}
+
+.revere-source-domain {
+  color: var(--revere-accent-soft);
+  font-size: 0.75rem;
+  font-family: var(--revere-mono);
+  margin-top: 0.07rem;
+}
+
+.revere-source-used {
+  color: var(--revere-text-muted);
+  font-size: 0.79rem;
+  margin-top: 0.18rem;
+}
+
+/* ── Claim cards ─────────────────────────────────────────── */
+
+.revere-claim-card {
+  background: var(--revere-panel-elevated);
+  border: 1px solid var(--revere-border-subtle);
+  border-radius: 8px;
+  padding: 0.42rem 0.6rem;
+  margin-bottom: 0.36rem;
+}
+
+.revere-claim-text  { color: var(--revere-text); font-size: 0.83rem; }
+.revere-claim-meta  { color: var(--revere-text-muted); font-size: 0.75rem; margin-top: 0.18rem; }
+
+/* ── Inner panels (inside trace card) ───────────────────── */
+
+.revere-panel-markdown details {
+  background: var(--revere-panel-elevated);
+  border: 1px solid var(--revere-border-subtle);
+  border-radius: 7px;
+  padding: 0.42rem 0.6rem;
+  margin-bottom: 0.38rem;
+}
+
+.revere-panel-markdown details > summary {
+  cursor: pointer;
+  color: var(--revere-text);
+  font-weight: 600;
+  font-size: 0.84rem;
+  user-select: none;
+}
+
+.revere-panel-markdown details[open] > summary {
+  margin-bottom: 0.38rem;
+  color: var(--revere-accent);
+}
+
+.revere-panel-markdown code,
+.revere-panel-markdown pre {
+  font-family: var(--revere-mono) !important;
+  font-size: 0.77rem !important;
+}
+
+/* ── Empty placeholder ───────────────────────────────────── */
+
+.revere-empty {
+  color: var(--revere-text-muted);
+  font-style: italic;
+  font-size: 0.84rem;
+}
+
+/* ── Demo hints ──────────────────────────────────────────── */
+
+.revere-demo-hints {
+  color: var(--revere-text-muted);
+  font-size: 0.81rem;
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--revere-border);
+}
+
+.revere-demo-hints h3 {
+  font-family: var(--revere-serif);
+  color: var(--revere-accent);
+  font-size: 0.88rem;
+}
+
+/* ── Gradio component overrides ──────────────────────────── */
+
+.gradio-container .block,
+.gradio-container .form {
+  border-color: var(--revere-border) !important;
+}
+
+.gradio-container label,
+.gradio-container .label-wrap span {
+  color: var(--revere-text-muted) !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gradio-container textarea,
+.gradio-container input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  background: var(--revere-panel) !important;
+  border-color: var(--revere-border) !important;
+  color: var(--revere-text) !important;
+}
+
+/* Chatbot container background */
+.gradio-container .chatbot {
+  background: var(--revere-panel) !important;
+  border-color: var(--revere-border) !important;
+  color: var(--revere-text) !important;
+}
+
+.gradio-container button.primary {
+  background: var(--revere-panel-elevated) !important;
+  border: 1px solid var(--revere-accent) !important;
+  color: var(--revere-accent) !important;
+  font-weight: 600 !important;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease !important;
+}
+
+.gradio-container button.primary:hover {
+  background: #2c2518 !important;
+  border-color: #ddd0b0 !important;
+}
+
+.gradio-container button.primary:active {
+  transform: scale(0.96) !important;
+}
+
+.gradio-container button.secondary {
+  background: transparent !important;
+  border: 1px solid var(--revere-border) !important;
+  color: var(--revere-text-muted) !important;
+  transition: background 0.18s ease, border-color 0.18s ease !important;
+}
+
+.gradio-container button.secondary:hover {
+  background: #1f1f1f !important;
+  border-color: #3a3a3a !important;
+}
+
+.gradio-container .accordion {
+  border-color: var(--revere-border) !important;
+  background: var(--revere-panel) !important;
+}
+
+/* ── Chatbot message bubbles ─────────────────────────────── */
+
+/* Bot / assistant — no bubble, clean flowing prose */
+#revere-chatbot [data-testid="bot"],
+#revere-chatbot [data-testid="bot"] > *,
+#revere-chatbot .message.bot,
+#revere-chatbot .bot {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#revere-chatbot [data-testid="bot"] .message-bubble-border,
+#revere-chatbot .message.bot .message-bubble-border {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0.2rem 0 !important;
+}
+
+#revere-chatbot [data-testid="bot"] p,
+#revere-chatbot [data-testid="bot"] .prose,
+#revere-chatbot .message.bot p {
+  line-height: 1.75 !important;
+  color: var(--revere-text) !important;
+  font-size: 0.95rem !important;
+}
+
+/* User messages — soft panel background, left border accent */
+#revere-chatbot [data-testid="user"] .message-bubble-border,
+#revere-chatbot .message.user .message-bubble-border,
+#revere-chatbot .user .message-bubble-border {
+  background: var(--revere-panel-elevated) !important;
+  border: 1px solid var(--revere-border) !important;
+  border-left: 3px solid var(--revere-accent) !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Also cover the outer wrapper containers */
+.gradio-container .chatbot [data-testid="bot"],
+.gradio-container .chatbot [data-testid="bot"] .message-bubble-border {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}

@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any, Literal
 
 from revere_agent.llm.provider import LLMProvider, ModelAlias
 from revere_agent.prompts.registry import prompt_version
@@ -71,6 +73,43 @@ class TurnResult:
     final_response: FinalResponse | None = None
 
 
+STAGE_PROGRESS_MESSAGES: dict[str, str] = {
+    "s1_intake": "Stage 1/7 — Intake: normalizing request…",
+    "s2_scope": "Stage 2/7 — Scope: checking whether request is in scope…",
+    "s3_plan_search": "Stage 3/7 — Search Plan: deciding retrieval strategy…",
+    "search_execution": "Stage 3/7 — Search: executing queries…",
+    "s4_source_quality": "Stage 4/7 — Evidence: assessing source quality…",
+    "s5_perspectives": "Stage 5/7 — Perspectives: mapping viewpoints…",
+    "s6_verification": "Stage 6/7 — Verification: calibrating factual claims…",
+    "s7_compose_check": "Stage 7/7 — Compose: drafting final answer…",
+}
+
+STAGE_NUMBERS: dict[str, int] = {
+    "s1_intake": 1,
+    "s2_scope": 2,
+    "s3_plan_search": 3,
+    "search_execution": 3,
+    "s4_source_quality": 4,
+    "s5_perspectives": 5,
+    "s6_verification": 6,
+    "s7_compose_check": 7,
+}
+
+
+@dataclass
+class ProgressEvent:
+    """Structured progress payload for UI streaming and audit timelines."""
+
+    stage_id: str
+    stage_num: int | None
+    total_stages: int
+    status: Literal["started", "completed", "stopped"]
+    message: str
+    output: dict[str, Any] | None = None
+    duration_ms: int | None = None
+    extra: dict[str, Any] | None = None
+
+
 @dataclass
 class SearchExecutionStats:
     """Budget/accounting metrics for S3 search execution."""
@@ -111,8 +150,29 @@ class Orchestrator:
         self,
         user_message: str,
         state: ConversationState | None = None,
+        *,
+        progress_callback: Callable[[ProgressEvent], None] | None = None,
     ) -> TurnResult:
         state = state or ConversationState()
+
+        def _emit(event: ProgressEvent) -> None:
+            if progress_callback is not None:
+                progress_callback(event)
+
+        def _progress(stage_id: str, *, extra: dict[str, Any] | None = None) -> None:
+            message = STAGE_PROGRESS_MESSAGES.get(stage_id)
+            if message:
+                _emit(
+                    ProgressEvent(
+                        stage_id=stage_id,
+                        stage_num=STAGE_NUMBERS.get(stage_id),
+                        total_stages=7,
+                        status="started",
+                        message=message,
+                        extra=extra,
+                    )
+                )
+
         trace = ReasoningTrace(
             turn_id=f"turn-{uuid.uuid4().hex[:12]}",
             session_id=state.session_id,
@@ -122,17 +182,21 @@ class Orchestrator:
         )
 
         # ── S1 ────────────────────────────────────────────────────────
+        _progress("s1_intake")
         intake = self._record(
             trace,
             "s1_intake",
             lambda: run_s1_intake(self.llm, user_message, state.history),
+            _emit=_emit,
         )
 
         # ── S2 ────────────────────────────────────────────────────────
+        _progress("s2_scope")
         scope = self._record(
             trace,
             "s2_scope",
             lambda: run_s2_scope(self.llm, intake, state.history),
+            _emit=_emit,
         )
 
         # ── Short-circuit on out-of-scope ─────────────────────────────
@@ -140,13 +204,24 @@ class Orchestrator:
         # ScopeDecision already carries the graceful boundary content in
         # its suggested_redirect field; no additional LLM call needed.
         if not scope.in_scope:
+            _emit(
+                ProgressEvent(
+                    stage_id="s2_scope",
+                    stage_num=2,
+                    total_stages=7,
+                    status="stopped",
+                    message="Pipeline stopped after S2 — request is out of scope.",
+                )
+            )
             return TurnResult(trace=trace, intake=intake, scope=scope)
 
         # ── S3 ────────────────────────────────────────────────────────
+        _progress("s3_plan_search")
         plan = self._record(
             trace,
             "s3_plan_search",
             lambda: run_s3_plan_search(self.llm, intake),
+            _emit=_emit,
         )
 
         # ── Search execution (no LLM call; pure I/O) ──────────────────
@@ -157,6 +232,7 @@ class Orchestrator:
         raw_hits_count = 0
         results_capped = False
         if plan.needs_search and self.search is not None and plan.queries:
+            _progress("search_execution")
             search_executed = True
             for query in plan.queries:
                 query_hits = self.search.search(
@@ -175,6 +251,21 @@ class Orchestrator:
             unique_hits = deduped
             results_capped = len(unique_hits) > self.max_unique_hits
             hits = unique_hits[: self.max_unique_hits]
+            _emit(
+                ProgressEvent(
+                    stage_id="search_execution",
+                    stage_num=3,
+                    total_stages=7,
+                    status="completed",
+                    message="Search complete.",
+                    extra={
+                        "search_calls_made": search_calls_made,
+                        "raw_hits": raw_hits_count,
+                        "unique_hits": len(unique_hits),
+                        "hits_passed_to_s4": len(hits),
+                    },
+                )
+            )
 
         search_stats = SearchExecutionStats(
             s3_queries=len(plan.queries),
@@ -186,6 +277,7 @@ class Orchestrator:
         )
 
         # ── S4 ────────────────────────────────────────────────────────
+        _progress("s4_source_quality")
         evidence = self._record(
             trace,
             "s4_source_quality",
@@ -196,23 +288,29 @@ class Orchestrator:
                 extracted=None,  # Day 3+ may add extract() for top hits
                 search_was_performed=search_executed,
             ),
+            _emit=_emit,
         )
 
         # ── S5 ────────────────────────────────────────────────────────
+        _progress("s5_perspectives")
         perspectives = self._record(
             trace,
             "s5_perspectives",
             lambda: run_s5_perspectives(self.llm, intake, evidence),
+            _emit=_emit,
         )
 
         # ── S6 ────────────────────────────────────────────────────────
+        _progress("s6_verification")
         verification = self._record(
             trace,
             "s6_verification",
             lambda: run_s6_verification(self.llm, intake, evidence, perspectives),
+            _emit=_emit,
         )
 
         # ── S7 ────────────────────────────────────────────────────────
+        _progress("s7_compose_check")
         final_response = self._record(
             trace,
             "s7_compose_check",
@@ -223,6 +321,7 @@ class Orchestrator:
                 perspectives,
                 verification,
             ),
+            _emit=_emit,
         )
         trace.final_response = final_response
 
@@ -242,8 +341,16 @@ class Orchestrator:
 
     # ── Internals ─────────────────────────────────────────────────────
 
-    def _record(self, trace: ReasoningTrace, stage_id: str, fn):
+    def _record(
+        self,
+        trace: ReasoningTrace,
+        stage_id: str,
+        fn,
+        *,
+        _emit: Callable[[ProgressEvent], None] | None = None,
+    ):
         """Call a stage, time it, append a StageTraceEntry, return the output."""
+        stage_num = STAGE_NUMBERS.get(stage_id)
         start = time.monotonic()
         output = fn()
         duration_ms = int((time.monotonic() - start) * 1000)
@@ -256,4 +363,16 @@ class Orchestrator:
                 output=output.model_dump(mode="json"),
             )
         )
+        if _emit is not None:
+            _emit(
+                ProgressEvent(
+                    stage_id=stage_id,
+                    stage_num=stage_num,
+                    total_stages=7,
+                    status="completed",
+                    message=f"{STAGE_PROGRESS_MESSAGES.get(stage_id, stage_id)} — complete",
+                    output=output.model_dump(mode="json"),
+                    duration_ms=duration_ms,
+                )
+            )
         return output

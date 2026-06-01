@@ -8,6 +8,7 @@ dependencies = [
     "tavily-python>=0.5.0",
     "pydantic>=2.7.0",
     "python-dotenv>=1.0.0",
+    "gradio>=4.44.0",
 ]
 
 [dependency-groups]
@@ -18,8 +19,10 @@ dev = [
 [project.scripts]
 # Day 1 hello-world (single-stage smoke test).
 revere-hello = "revere_agent.cli.hello:main"
-# Day 2 reasoning pipeline (S1→S5 + trace).
+# Day 2 reasoning pipeline (S1→S7 + trace).
 revere-run = "revere_agent.cli.run:main"
+# Day 4 Gradio UI.
+revere-ui = "revere_agent.ui.gradio_app:main"
 
 [build-system]
 requires = ["hatchling"]
