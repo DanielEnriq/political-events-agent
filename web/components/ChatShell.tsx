@@ -416,7 +416,7 @@ export default function ChatShell() {
 
       {/* ── Right Inspector ── */}
       <div
-        className={`flex-shrink-0 border-l border-border flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`flex-shrink-0 border-l border-border flex flex-col overflow-hidden ${
           rightOpen ? "w-80" : "w-12"
         }`}
       >

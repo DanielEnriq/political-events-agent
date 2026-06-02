@@ -7,6 +7,14 @@ import TraceCard from "./TraceCard";
 
 // ── Answer fade-in — renders full Markdown immediately, fades in smoothly ─────
 
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 function InlineAnswer({
   result,
   showRaw,
@@ -17,6 +25,7 @@ function InlineAnswer({
   onFollowUp?: (text: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const [uncertaintyOpen, setUncertaintyOpen] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true));
@@ -74,44 +83,62 @@ function InlineAnswer({
 
       {/* Citations */}
       {result.citations.length > 0 && (
-        <div className="border-t border-border/30 pt-3 space-y-2">
-          <p className="text-[11px] font-medium text-muted/60 uppercase tracking-wider">
+        <div className="border-t border-border/30 pt-3 space-y-1.5">
+          <p className="text-[11px] font-medium text-muted/60 uppercase tracking-wider mb-2">
             Sources
           </p>
-          <ul className="space-y-2.5">
-            {result.citations.map((c, i) => (
-              <li key={i} className="flex gap-2 text-[12px]">
-                <span className="text-muted/35 flex-shrink-0 mt-0.5">↗</span>
-                <span className="min-w-0">
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline"
-                  >
-                    {c.label}
-                  </a>
+          <ul className="space-y-2">
+            {result.citations.map((c, i) => {
+              const domain = hostname(c.url);
+              return (
+                <li key={i} className="rounded border border-border/30 bg-surface/20 px-2.5 py-2 space-y-0.5">
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[12px] text-accent hover:underline font-medium leading-snug flex-1 min-w-0"
+                    >
+                      {c.label}
+                    </a>
+                    <span className="text-[10px] text-muted/40 flex-shrink-0 mt-px">{domain}</span>
+                  </div>
                   {c.used_for_claim && (
-                    <span className="text-muted/55 ml-1.5 leading-relaxed">
-                      — {c.used_for_claim}
-                    </span>
+                    <p className="text-[11px] text-muted/50 leading-snug">
+                      Used for: {c.used_for_claim}
+                    </p>
                   )}
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
 
-      {/* Residual uncertainty */}
+      {/* Residual uncertainty — collapsed by default */}
       {result.residual_uncertainty && (
-        <div className="rounded border border-border/40 bg-surface/20 px-3 py-2.5 border-l-2 border-l-muted/30">
-          <p className="text-[11px] text-muted/55 font-medium uppercase tracking-wider mb-1">
-            Residual uncertainty
-          </p>
-          <p className="text-[12px] text-muted/65 italic leading-relaxed">
-            {result.residual_uncertainty}
-          </p>
+        <div className="border-t border-border/20 pt-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-muted/45 leading-none">
+              Evidence limitations noted
+            </span>
+            <button
+              type="button"
+              onClick={() => setUncertaintyOpen((o) => !o)}
+              aria-expanded={uncertaintyOpen}
+              aria-label={
+                uncertaintyOpen ? "Hide uncertainty details" : "Show uncertainty details"
+              }
+              className="text-[11px] text-muted/40 hover:text-muted/70 transition-colors flex-shrink-0"
+            >
+              {uncertaintyOpen ? "Hide" : "Show"}
+            </button>
+          </div>
+          {uncertaintyOpen && (
+            <p className="mt-2 text-[12px] text-muted/55 italic leading-relaxed pl-2 border-l border-border/30">
+              {result.residual_uncertainty}
+            </p>
+          )}
         </div>
       )}
 

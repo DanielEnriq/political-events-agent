@@ -80,7 +80,7 @@ export default function Sidebar({
 }: SidebarProps) {
   return (
     <div
-      className={`flex flex-col flex-shrink-0 bg-surface border-r border-border overflow-hidden transition-all duration-200 ${
+      className={`flex flex-col flex-shrink-0 bg-surface border-r border-border overflow-hidden ${
         open ? "w-64" : "w-14"
       }`}
     >

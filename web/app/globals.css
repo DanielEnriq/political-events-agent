@@ -92,6 +92,7 @@ body {
   line-height: 1.8;
   color: rgba(245, 240, 232, 0.9);
   font-size: 0.875rem;
+  max-width: min(60ch, 100%);
 }
 .answer-prose p {
   margin-bottom: 1rem;

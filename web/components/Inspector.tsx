@@ -44,7 +44,7 @@ const STAGE_META: Record<string, { title: string; description: string }> = {
   s7_compose_check: {
     title: "S7 — Compose & Self-check",
     description:
-      "Drafts the final response and runs a 6-point neutrality self-check. Revisions are recorded if the draft fails any criterion.",
+      "Drafts the final response and runs a 7-point neutrality self-check. Revisions are recorded if the draft fails any criterion.",
   },
 };
 
