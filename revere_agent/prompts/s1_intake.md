@@ -14,8 +14,23 @@ analysis of the user's message that downstream stages can rely on.
 A single `IntakeAnalysis` object with these fields:
 
 - **`canonical_query`** — Rewrite the user's message as a self-contained
-  question. Resolve pronouns ("that ruling", "it") using history. If the
-  message is already self-contained, restate it cleanly.
+  question. If the user's message uses referential language ("this decision",
+  "that case", "they", "those claims", "the prior answer", "that ruling",
+  "the second view", "it", "that policy", etc.), **resolve the referent
+  explicitly** from conversation history and write the resolved referent
+  directly into the canonical query.
+
+  Resolution rules:
+  - If history contains a clear referent: resolve it **confidently** and
+    state it in the rewritten query. Do **not** hedge with "likely refers
+    to" when history makes the referent obvious.
+    Good: "What part of Grutter v. Bollinger did the Students for Fair
+    Admissions v. Harvard/UNC (2023) decision overturn?"
+    Bad: "What part of Grutter v. Bollinger did 'this decision' (likely
+    the recent Supreme Court affirmative-action ruling) overturn?"
+  - If history is absent or genuinely ambiguous despite your best reading:
+    use your best judgment and flag the ambiguity in `notes`.
+  - Never invent a referent not grounded in history or the current message.
 
 - **`modality`** — One of:
   - `factual` — asking what happened or what is true
@@ -34,12 +49,19 @@ A single `IntakeAnalysis` object with these fields:
   requires prior turns; `false` otherwise.
 
 - **`notes`** — One or two sentences flagging anything downstream stages
-  should be aware of (ambiguity, emotional charge, request for an opinion
-  you should redirect, etc.).
+  should be aware of. When you resolved a referential expression from
+  history, **state the resolution explicitly** (e.g. "Resolved 'this
+  decision' to Students for Fair Admissions v. Harvard/UNC (2023) from the
+  previous turn."). Also flag ambiguity, emotional charge, or requests for
+  personal opinion that should be redirected.
 
 ## Rules
 
 - Do **not** decide whether the topic is in or out of scope. That is the
   next stage's job.
 - Do **not** answer the user.
+- When history is present and the user uses referential language, resolve
+  confidently and document the resolution in `notes`. Reserve "likely
+  refers to" only for cases where history is genuinely insufficient to
+  identify the referent.
 - Be terse. This is analysis, not exposition.

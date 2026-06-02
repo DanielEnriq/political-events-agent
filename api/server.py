@@ -6,7 +6,7 @@ import json
 import queue
 import sys
 import threading
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import uvicorn
@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from revere_agent.agent.orchestrator import ProgressEvent
+from revere_agent.agent.state import ConversationState
 from revere_agent.cli.run import _maybe_search_provider
 from revere_agent.llm import make_provider_from_env
 
@@ -41,11 +42,17 @@ _STAGE_LABELS: dict[str, str] = {
 }
 
 
+class HistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ChatRequest(BaseModel):
     message: str
     fast_mode: bool = False
     no_search: bool = False
     max_hits: int = 6
+    history: list[HistoryMessage] = []
 
 
 def _serialize_progress(event: ProgressEvent) -> dict[str, Any]:
@@ -572,6 +579,11 @@ def _stream_turn(req: ChatRequest):
         max_unique_hits=resolved_max_hits,
     )
 
+    # Build ConversationState from bounded history sent by the frontend.
+    state = ConversationState()
+    for entry in req.history:
+        state.record(entry.role, entry.content)
+
     event_q: queue.Queue[ProgressEvent | None] = queue.Queue()
     result_holder: dict[str, Any] = {}
     error_holder: dict[str, Exception] = {}
@@ -582,7 +594,7 @@ def _stream_turn(req: ChatRequest):
     def _worker() -> None:
         try:
             result_holder["result"] = orch.run_turn(
-                req.message, progress_callback=on_progress
+                req.message, state=state, progress_callback=on_progress
             )
         except Exception as e:  # noqa: BLE001
             error_holder["error"] = e

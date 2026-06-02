@@ -1,4 +1,4 @@
-import type { CompletePayload, ProgressEvent, RunOptions } from "./types";
+import type { CompletePayload, HistoryEntry, ProgressEvent, RunOptions } from "./types";
 
 export type SSEHandlers = {
   onStart?: () => void;
@@ -62,14 +62,15 @@ export async function streamChat(
   message: string,
   options: RunOptions,
   handlers: SSEHandlers,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  history?: HistoryEntry[]
 ): Promise<void> {
   let res: Response;
   try {
     res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, ...options }),
+      body: JSON.stringify({ message, ...options, history: history ?? [] }),
       signal,
     });
   } catch (e) {

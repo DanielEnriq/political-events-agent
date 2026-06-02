@@ -149,6 +149,11 @@ export interface RunOptions {
   max_hits: number;
 }
 
+export interface HistoryEntry {
+  role: "user" | "assistant";
+  content: string;
+}
+
 // ── Message types (source of truth for UI state) ──────────────────────────────
 
 export interface UserMessage {

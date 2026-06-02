@@ -7,11 +7,12 @@ import type {
   ChatMessage,
   ChatSession,
   CompletePayload,
+  HistoryEntry,
   ProgressEvent,
   RunOptions,
   SelectedStage,
 } from "@/lib/types";
-import { isAssistant } from "@/lib/types";
+import { isAssistant, isUser } from "@/lib/types";
 import { streamChat } from "@/lib/api";
 import { createChatTitle, loadChats, saveChats } from "@/lib/storage";
 import Composer, { type ComposerHandle } from "./Composer";
@@ -48,6 +49,27 @@ const DEFAULT_OPTIONS: RunOptions = {
   max_hits: 6,
 };
 
+// ── Bounded history builder ───────────────────────────────────────────────────
+// Sends at most the last 6 completed messages (~3 pairs) to the backend.
+// User messages are truncated to 500 chars; assistant answers to 1000 chars.
+// Running/error assistant messages are excluded.
+
+const USER_TRUNC = 500;
+const ASSISTANT_TRUNC = 1000;
+const MAX_HISTORY_ENTRIES = 6;
+
+function buildBoundedHistory(messages: ChatMessage[]): HistoryEntry[] {
+  const eligible: HistoryEntry[] = [];
+  for (const m of messages) {
+    if (isUser(m)) {
+      eligible.push({ role: "user", content: m.content.slice(0, USER_TRUNC) });
+    } else if (isAssistant(m) && m.status === "done" && m.result) {
+      eligible.push({ role: "assistant", content: m.result.answer.slice(0, ASSISTANT_TRUNC) });
+    }
+  }
+  return eligible.slice(-MAX_HISTORY_ENTRIES);
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ChatShell() {
@@ -72,6 +94,7 @@ export default function ChatShell() {
   const runningRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const composerRef = useRef<ComposerHandle>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);         // snapshot for history building
 
   // ── Load from localStorage on mount ──────────────────────────────────────
   useEffect(() => {
@@ -90,6 +113,8 @@ export default function ChatShell() {
   const activeChat = chats.find(c => c.id === activeChatId) ?? null;
   const messages: ChatMessage[] = activeChat?.messages ?? [];
   const hasMessages = messages.length > 0;
+  // Keep ref current so handleSubmit can build history without a stale closure.
+  messagesRef.current = messages;
   const running = messages.some(m => isAssistant(m) && m.status === "running");
 
   // ── Inspector auto-follow ─────────────────────────────────────────────────
@@ -193,6 +218,11 @@ export default function ChatShell() {
       const thisChatId = chatId!;
       abortRef.current = new AbortController();
 
+      // Build bounded history from completed turns BEFORE the current one.
+      // messagesRef.current reflects the state at render time (before new messages
+      // were appended), so it contains only prior turns.
+      const history = buildBoundedHistory(messagesRef.current);
+
       try {
         await streamChat(
           message,
@@ -255,7 +285,8 @@ export default function ChatShell() {
               );
             },
           },
-          abortRef.current.signal
+          abortRef.current.signal,
+          history
         );
       } catch (e) {
         runningRef.current = false;
