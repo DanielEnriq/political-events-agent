@@ -155,6 +155,8 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
                     "core_claims": list(getattr(p, "core_claims", None) or []),
                     "strongest_evidence": list(getattr(p, "strongest_evidence", None) or []),
                     "concerns": list(getattr(p, "key_concerns_about_other_views", None) or []),
+                    "evidence_coverage": getattr(p, "evidence_coverage", None),
+                    "unsupported_empirical_claims": list(getattr(p, "unsupported_empirical_claims", None) or []),
                 }
                 for p in persp_list
             ],
@@ -179,6 +181,10 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
                     "verification_basis": getattr(c, "verification_basis", None),
                     "suggested_hedging": getattr(c, "suggested_hedging", None),
                     "drop_if_uncorroborated": getattr(c, "drop_if_uncorroborated", False),
+                    "claim_type": getattr(c, "claim_type", None),
+                    "support_level": getattr(c, "support_level", None),
+                    "attribution": getattr(c, "attribution", None),
+                    "outcome_relevance": getattr(c, "outcome_relevance", None),
                 }
                 for c in claims
             ],
@@ -485,6 +491,8 @@ def _build_stage_detail_from_output(
                     "core_claims": p.get("core_claims") or [],
                     "strongest_evidence": p.get("strongest_evidence") or [],
                     "concerns": p.get("key_concerns_about_other_views") or [],
+                    "evidence_coverage": p.get("evidence_coverage"),
+                    "unsupported_empirical_claims": p.get("unsupported_empirical_claims") or [],
                 }
                 for p in (o.get("perspectives") or [])
             ],
@@ -508,6 +516,10 @@ def _build_stage_detail_from_output(
                     "verification_basis": c.get("verification_basis"),
                     "suggested_hedging": c.get("suggested_hedging"),
                     "drop_if_uncorroborated": c.get("drop_if_uncorroborated", False),
+                    "claim_type": c.get("claim_type"),
+                    "support_level": c.get("support_level"),
+                    "attribution": c.get("attribution"),
+                    "outcome_relevance": c.get("outcome_relevance"),
                 }
                 for c in (o.get("claims") or [])
             ],

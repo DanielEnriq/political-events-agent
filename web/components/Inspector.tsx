@@ -368,29 +368,55 @@ function S5Detail({ d }: { d: NonNullable<StageDetails["s5_perspectives"]> }) {
         )}
       </div>
       {/* Perspective cards */}
-      {d.perspectives.map((p, i) => (
-        <div key={i} className="rounded border border-border/30 px-2.5 py-2.5 space-y-2">
-          <p className="text-xs font-semibold text-text/80">{p.label ?? `Perspective ${i + 1}`}</p>
-          {p.core_claims.length > 0 && (
-            <div>
-              <SectionLabel>Core claims</SectionLabel>
-              <StringList items={p.core_claims} />
+      {d.perspectives.map((p, i) => {
+        const coverageColor = (c: string | null | undefined) => {
+          if (!c) return "default" as const;
+          if (c === "sourced") return "green" as const;
+          if (c === "mixed") return "yellow" as const;
+          return "red" as const;
+        };
+        const unsupported = safeArr<string>(p.unsupported_empirical_claims);
+        return (
+          <div key={i} className="rounded border border-border/30 px-2.5 py-2.5 space-y-2">
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <p className="text-xs font-semibold text-text/80">{p.label ?? `Perspective ${i + 1}`}</p>
+              {p.evidence_coverage && (
+                <Pill color={coverageColor(p.evidence_coverage)}>{p.evidence_coverage}</Pill>
+              )}
             </div>
-          )}
-          {p.strongest_evidence.length > 0 && (
-            <div>
-              <SectionLabel>Strongest evidence</SectionLabel>
-              <StringList items={p.strongest_evidence} />
-            </div>
-          )}
-          {p.concerns.length > 0 && (
-            <div>
-              <SectionLabel>Concerns about others</SectionLabel>
-              <StringList items={p.concerns} />
-            </div>
-          )}
-        </div>
-      ))}
+            {p.core_claims.length > 0 && (
+              <div>
+                <SectionLabel>Core claims</SectionLabel>
+                <StringList items={p.core_claims} />
+              </div>
+            )}
+            {p.strongest_evidence.length > 0 && (
+              <div>
+                <SectionLabel>Strongest evidence</SectionLabel>
+                <StringList items={p.strongest_evidence} />
+              </div>
+            )}
+            {p.concerns.length > 0 && (
+              <div>
+                <SectionLabel>Concerns about others</SectionLabel>
+                <StringList items={p.concerns} />
+              </div>
+            )}
+            {unsupported.length > 0 && (
+              <div>
+                <SectionLabel>Unsupported empirical claims</SectionLabel>
+                <ul className="space-y-1.5">
+                  {unsupported.map((u, j) => (
+                    <li key={j} className="text-[11px] text-yellow-400/70 leading-relaxed pl-2 border-l border-yellow-600/30">
+                      {u}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      })}
       {/* Consensus */}
       {d.areas_of_consensus.length > 0 && (
         <div>
@@ -440,12 +466,30 @@ function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
           <SectionLabel>Factual claims ({d.factual_claims.length})</SectionLabel>
           <div className="space-y-2">
             {d.factual_claims.map((c, i) => (
-              <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1">
+              <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1.5">
                 <p className="text-xs text-text/70 leading-relaxed">{c.claim ? stripMd(c.claim) : null}</p>
+                {c.attribution && (
+                  <p className="text-[11px] text-muted/50 italic">attributed to: {c.attribution}</p>
+                )}
                 <div className="flex flex-wrap gap-1">
                   {c.confidence != null && (
                     <Pill color={c.confidence >= 4 ? "green" : c.confidence >= 2 ? "yellow" : "red"}>
                       conf {c.confidence}/5
+                    </Pill>
+                  )}
+                  {c.claim_type && <Pill>{c.claim_type.replace(/_/g, " ")}</Pill>}
+                  {c.support_level && (
+                    <Pill color={
+                      c.support_level === "directly_sourced" ? "green" :
+                      c.support_level === "indirectly_sourced" ? "yellow" :
+                      c.support_level === "unsupported" ? "red" : "default"
+                    }>
+                      {c.support_level.replace(/_/g, " ")}
+                    </Pill>
+                  )}
+                  {c.outcome_relevance && c.outcome_relevance !== "none" && (
+                    <Pill color={c.outcome_relevance === "direct" ? "yellow" : "default"}>
+                      {c.outcome_relevance} relevance
                     </Pill>
                   )}
                   {c.drop_if_uncorroborated && <Pill color="red">drop if uncorroborated</Pill>}

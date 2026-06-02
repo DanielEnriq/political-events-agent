@@ -14,6 +14,15 @@ StrictModel = ConfigDict(extra="forbid")
 
 DisputeKind = Literal["empirical", "normative", "mixed"]
 
+# Phase 2: evidence-coverage classification for each mapped perspective.
+PerspectiveEvidenceCoverage = Literal[
+    "sourced",      # retrieved evidence supports most core empirical claims
+    "mixed",        # some claims sourced, others rely on model prior / attribution
+    "model_prior",  # perspective mostly reconstructed from model background knowledge
+    "thin",         # weak or asymmetric source support; claims should be hedged
+    "none",         # no retrieved evidence; only values/concerns can be steelmanned
+]
+
 
 class Perspective(BaseModel):
     model_config = StrictModel
@@ -39,6 +48,18 @@ class Perspective(BaseModel):
     steelman_quality_self_assessment: str = Field(
         description="Brief self-critique: would a proponent of this view "
         "recognize and endorse the framing above?"
+    )
+
+    # Phase 2 optional fields — all default to None/[] for backward compatibility.
+    evidence_coverage: PerspectiveEvidenceCoverage | None = Field(
+        default=None,
+        description="How well the retrieved sources support the empirical claims "
+        "in this perspective.",
+    )
+    unsupported_empirical_claims: list[str] = Field(
+        default_factory=list,
+        description="Up to 3 empirical claims from this perspective that lack "
+        "adequate retrieved source support and should be attributed or hedged.",
     )
 
 

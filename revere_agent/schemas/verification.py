@@ -14,9 +14,43 @@ StrictModel = ConfigDict(extra="forbid")
 
 VerificationBasis = Literal["evidence_base", "model_prior", "uncertain"]
 
+# Phase 2: optional claim-classification enums.
+ClaimType = Literal[
+    "verified_fact",
+    "reported_claim",
+    "disputed_interpretation",
+    "unsupported_claim",
+    "value_judgment",
+]
+
+SupportLevel = Literal[
+    "directly_sourced",
+    "indirectly_sourced",
+    "model_prior",
+    "unsupported",
+]
+
+OutcomeRelevance = Literal[
+    "direct",
+    "indirect",
+    "none",
+    "unclear",
+]
+
 # Known field names in FactualClaim — used by the normalization validator.
+# Includes new optional Phase 2 fields so they are not accidentally remapped.
 _FACTUAL_CLAIM_KNOWN_FIELDS = frozenset(
-    {"claim", "confidence", "verification_basis", "suggested_hedging", "drop_if_uncorroborated"}
+    {
+        "claim",
+        "confidence",
+        "verification_basis",
+        "suggested_hedging",
+        "drop_if_uncorroborated",
+        "claim_type",
+        "support_level",
+        "attribution",
+        "outcome_relevance",
+    }
 )
 
 
@@ -37,6 +71,24 @@ class FactualClaim(BaseModel):
     drop_if_uncorroborated: bool = Field(
         description="If true, the composer should remove this claim entirely "
         "rather than hedge it."
+    )
+
+    # Phase 2 optional fields — all default to None for backward compatibility.
+    claim_type: ClaimType | None = Field(
+        default=None,
+        description="Classification of the claim's epistemic status.",
+    )
+    support_level: SupportLevel | None = Field(
+        default=None,
+        description="How well the retrieved evidence supports this specific claim.",
+    )
+    attribution: str | None = Field(
+        default=None,
+        description="For reported_claim: who made the claim. Keep concise (≤ 10 words).",
+    )
+    outcome_relevance: OutcomeRelevance | None = Field(
+        default=None,
+        description="Whether this claim, if true, would affect the event's outcome.",
     )
 
     @model_validator(mode="before")

@@ -59,6 +59,26 @@ For each claim:
     legal conclusions, or institutional misconduct without direct source
     support in the retrieved evidence.
   - false when hedging is sufficient to convey the uncertainty.
+- `claim_type` (optional — populate when classification is clear):
+  - `verified_fact` — corroborated by retrieved evidence or official record.
+  - `reported_claim` — what someone alleged, filed, argued, or believed.
+  - `disputed_interpretation` — contested reading of events or evidence.
+  - `unsupported_claim` — empirical claim without adequate source support.
+  - `value_judgment` — normative, not verifiable as true/false.
+- `support_level` (optional):
+  - `directly_sourced` — retrieved evidence directly supports this claim.
+  - `indirectly_sourced` — retrieved evidence partially supports or contextualizes.
+  - `model_prior` — relies mainly on model background knowledge.
+  - `unsupported` — lacks adequate support; hedge or drop.
+- `attribution` (optional): if `claim_type=reported_claim`, who made the claim.
+  Keep concise (≤ 10 words).
+- `outcome_relevance` (optional):
+  - `direct` — if true, would directly affect the event's outcome.
+  - `indirect` — relevant context, not outcome-determinative alone.
+  - `none` — not outcome-relevant.
+  - `unclear` — relevance is disputed or unestablished.
+  Pair `outcome_relevance=direct` with `drop_if_uncorroborated=true` for
+  claims like "fraud changed the result" that lack direct source support.
 
 ## Weak evidence behavior (mandatory)
 If weak evidence mode is YES (assessments empty, confidence_in_evidence <= 3,

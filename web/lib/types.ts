@@ -94,6 +94,8 @@ export interface StageDetails {
       core_claims: string[];
       strongest_evidence: string[];
       concerns: string[];
+      evidence_coverage?: string | null;
+      unsupported_empirical_claims?: string[];
     }>;
     areas_of_consensus: string[];
     areas_of_disagreement: string[];
@@ -108,6 +110,10 @@ export interface StageDetails {
       verification_basis: string | null;
       suggested_hedging: string | null;
       drop_if_uncorroborated: boolean;
+      claim_type?: string | null;
+      support_level?: string | null;
+      attribution?: string | null;
+      outcome_relevance?: string | null;
     }>;
   };
   s7_compose_check?: {

@@ -73,6 +73,20 @@ A brief honest critique of your own write-up of this perspective:
 - Is this perspective's section noticeably weaker than the others?
 - Did the evidence base shortchange this side?
 
+### evidence_coverage (enum — required)
+Classify how well retrieved sources support this perspective's empirical claims:
+- `sourced` — retrieved evidence supports most core empirical claims.
+- `mixed` — some claims sourced, others rely on model prior or attribution.
+- `model_prior` — perspective is mostly reconstructed from model background knowledge.
+- `thin` — weak or asymmetric source support; claims must be hedged and attributed.
+- `none` — no retrieved evidence; only values and concerns may be steelmanned.
+
+### unsupported_empirical_claims (list — max 3, may be empty)
+List at most 3 empirical claims from this perspective that lack retrieved source
+support and must not be asserted as established fact. Omit normative or value
+claims. Keep each item to ≤ 20 words. Leave empty if all core claims are
+well-sourced or if the perspective makes no specific empirical claims.
+
 ### Concision targets (performance)
 - Keep `core_claims` to **3-4 items** per perspective.
 - Keep `strongest_evidence` to **up to 3 items** per perspective.
