@@ -87,6 +87,38 @@ support and must not be asserted as established fact. Omit normative or value
 claims. Keep each item to ≤ 20 words. Leave empty if all core claims are
 well-sourced or if the perspective makes no specific empirical claims.
 
+### Coverage-aware wording (binding)
+
+Write `core_claims` and `strongest_evidence` text to match the coverage level:
+
+| `evidence_coverage` | Required wording for empirical claims |
+| --- | --- |
+| `sourced` | Direct assertion is fine when retrieved evidence supports it. |
+| `mixed` | Direct assertion for sourced claims; attribution-first for the rest. |
+| `thin` | Attribution-first for **all** empirical claims. Use "proponents argue," "this view holds," "critics allege." |
+| `model_prior` | Attribution-first; minimize specific empirical claims. Prefer values, concerns, and interpretive framing. |
+| `none` | No concrete empirical allegations as core claims. Values, concerns, and interpretive framing only. |
+
+**Binding constraint.** If a claim appears in `unsupported_empirical_claims`,
+the same claim must not appear as bare fact in `core_claims` or
+`strongest_evidence`. Write the attributed version instead.
+- Unacceptable: `"Statistical anomalies indicate fraud."`
+- Required: `"Some proponents cite alleged statistical anomalies, but this run did not retrieve evidence validating that interpretation."`
+
+**`strongest_evidence` with weak coverage.** If no direct evidence was
+retrieved for this perspective, describe what proponents typically point to —
+clearly marked as reported or alleged. Example: *"Proponents commonly cite
+affidavit collections and observer-access complaints; this run did not retrieve
+primary documentation validating those allegations."* Do not fill this field
+with allegations stated in a sourced-sounding way.
+
+**Steelman ≠ false evidentiary parity.** The Ideological Turing Test requires
+equal *interpretive respect*: values, concerns, institutional-trust arguments,
+standards-of-proof disagreements. It does not require equal factual authority
+between a retrieved official record and an unsupported allegation. A perspective
+can be fully and charitably represented through framing and concern without
+asserting its weakest empirical claims as established fact.
+
 ### Concision targets (performance)
 - Keep `core_claims` to **3-4 items** per perspective.
 - Keep `strongest_evidence` to **up to 3 items** per perspective.

@@ -98,6 +98,13 @@ For asymmetric evidence (one side sourced, the other not): apply the above
 selectively to claims that benefit from the absent sources. Do not lower
 confidence on well-supported facts to create artificial balance.
 
+**S5-flagged perspectives.** If S5 assigned `evidence_coverage=thin`,
+`model_prior`, or `none` to a perspective, treat any bare empirical assertions
+from that perspective as high-risk. For such claims: prefer
+`claim_type=reported_claim` or `unsupported_claim`; set `support_level` to
+`model_prior` or `unsupported`; add hedging; and set
+`drop_if_uncorroborated=true` for outcome-changing assertions.
+
 ## Overall fields
 - `overall_calibration_note`: 1-2 concise sentences.
 - `things_i_should_not_assert`: concrete claims to avoid in final response.
