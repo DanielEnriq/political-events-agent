@@ -84,7 +84,7 @@ export interface StageDetails {
       domain: string;
       source_type: string | null;
       slant: string | null;
-      relevance: string | null;
+      relevance: number | null;
       confidence: number | null;
     }>;
   };
@@ -152,9 +152,21 @@ export interface AssistantMessage {
   result?: CompletePayload;
   /** Populated from SSE error events or caught exceptions. */
   error?: string;
+  /** "interrupted" = local page-close/refresh; "api" = actual backend/network error. */
+  errorKind?: "interrupted" | "api";
 }
 
 export type ChatMessage = UserMessage | AssistantMessage;
+
+// ── Chat session (localStorage persistence) ───────────────────────────────────
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: ChatMessage[];
+}
 
 // ── Inspector selection ───────────────────────────────────────────────────────
 

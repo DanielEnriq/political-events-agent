@@ -20,10 +20,32 @@ export default function MessageList({
   onFollowUp,
   showRaw,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+  const prevRunningRef = useRef(false);
+
+  function onScroll() {
+    const el = containerRef.current;
+    if (!el) return;
+    isAtBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const isRunning = messages.some(
+      m => isAssistant(m) && m.status === "running"
+    );
+    const wasRunning = prevRunningRef.current;
+    prevRunningRef.current = isRunning;
+
+    // On completion (running → done), don't jump to bottom — let answer reveal in place.
+    if (wasRunning && !isRunning) return;
+
+    // Auto-scroll only if the user is near the bottom.
+    if (isAtBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   if (messages.length === 0) {
@@ -42,7 +64,11 @@ export default function MessageList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+    <div
+      ref={containerRef}
+      onScroll={onScroll}
+      className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+    >
       {messages.map(msg => {
         if (isUser(msg)) {
           return (

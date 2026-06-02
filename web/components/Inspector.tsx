@@ -53,6 +53,26 @@ function formatMs(ms: number | null): string | null {
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
 }
 
+// Strip bold/italic Markdown markers from inspector text fields.
+// Accepts unknown so non-string values from unvalidated SSE detail payloads never crash.
+function stripMd(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value !== "string") return String(value);
+  return value.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1");
+}
+
+// Return a string safely from any runtime value; never renders [object Object].
+function safeStr(value: unknown, fallback = ""): string {
+  if (value == null) return fallback;
+  if (typeof value === "object") return fallback;
+  return String(value);
+}
+
+// Ensure array-typed fields from unvalidated SSE payloads are actually arrays.
+function safeArr<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -63,9 +83,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Fix B: added px-3 so text doesn't touch card edges
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-2 text-xs py-1.5 border-b border-border/20 last:border-0">
+    <div className="flex items-start justify-between gap-2 text-xs py-1.5 px-3 border-b border-border/20 last:border-0">
       <span className="text-muted flex-shrink-0">{label}</span>
       <span className="text-text/70 text-right min-w-0 break-words">{value}</span>
     </div>
@@ -86,12 +107,13 @@ function Pill({ children, color = "default" }: { children: React.ReactNode; colo
   );
 }
 
+// Fix I: space-y-2 and leading-[1.6] for better readability
 function StringList({ items }: { items: string[] }) {
   if (!items.length) return <span className="text-muted/40 text-xs italic">—</span>;
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-2">
       {items.map((s, i) => (
-        <li key={i} className="text-xs text-text/60 leading-relaxed pl-1 border-l border-border/30">
+        <li key={i} className="text-xs text-text/60 leading-[1.6] pl-2 border-l border-border/30">
           {s}
         </li>
       ))}
@@ -119,29 +141,28 @@ function S1Detail({ d }: { d: NonNullable<StageDetails["s1_intake"]> }) {
       {d.notes && (
         <div>
           <SectionLabel>Notes</SectionLabel>
-          <p className="text-xs text-text/50 leading-relaxed italic">{d.notes}</p>
+          <p className="text-xs text-text/50 leading-relaxed italic">{stripMd(d.notes)}</p>
         </div>
       )}
     </div>
   );
 }
 
+// Fix E: inline decision + confidence chips instead of InfoRow table
 function S2Detail({ d }: { d: NonNullable<StageDetails["s2_scope"]> }) {
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border/50 divide-y divide-border/20">
-        <InfoRow
-          label="Decision"
-          value={
-            d.in_scope != null ? (
-              <Pill color={d.in_scope ? "green" : "yellow"}>
-                {d.in_scope ? "In scope" : "Out of scope"}
-              </Pill>
-            ) : "—"
-          }
-        />
+      {/* Decision + confidence as inline chips */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {d.in_scope != null && (
+          <Pill color={d.in_scope ? "green" : "yellow"}>
+            {d.in_scope ? "In scope" : "Out of scope"}
+          </Pill>
+        )}
         {d.confidence != null && (
-          <InfoRow label="Confidence" value={`${d.confidence} / 5`} />
+          <Pill color={d.confidence >= 4 ? "green" : d.confidence >= 2 ? "yellow" : "red"}>
+            confidence {d.confidence}/5
+          </Pill>
         )}
       </div>
       {d.matched_charter_categories.length > 0 && (
@@ -157,13 +178,13 @@ function S2Detail({ d }: { d: NonNullable<StageDetails["s2_scope"]> }) {
       {d.reasoning && (
         <div>
           <SectionLabel>Reasoning</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed">{d.reasoning}</p>
+          <p className="text-xs text-text/60 leading-relaxed">{stripMd(d.reasoning)}</p>
         </div>
       )}
       {d.suggested_redirect && (
         <div>
           <SectionLabel>Redirect</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed italic">{d.suggested_redirect}</p>
+          <p className="text-xs text-text/60 leading-relaxed italic">{stripMd(d.suggested_redirect)}</p>
         </div>
       )}
     </div>
@@ -179,11 +200,11 @@ function S3Detail({ d }: { d: NonNullable<StageDetails["s3_plan_search"]> }) {
           {d.needs_search ? "Search required" : "Model knowledge sufficient"}
         </Pill>
       </div>
-      {/* Rationale next */}
+      {/* Rationale next (Fix F: strip Markdown) */}
       {d.rationale && (
         <div>
           <SectionLabel>Rationale</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed">{d.rationale}</p>
+          <p className="text-xs text-text/60 leading-relaxed">{stripMd(d.rationale)}</p>
         </div>
       )}
       {/* Queries */}
@@ -207,28 +228,40 @@ function S3Detail({ d }: { d: NonNullable<StageDetails["s3_plan_search"]> }) {
       {d.why_model_knowledge_insufficient && (
         <div>
           <SectionLabel>Why live search</SectionLabel>
-          <p className="text-xs text-text/50 leading-relaxed italic">{d.why_model_knowledge_insufficient}</p>
+          <p className="text-xs text-text/50 leading-relaxed italic">{stripMd(d.why_model_knowledge_insufficient)}</p>
         </div>
       )}
     </div>
   );
 }
 
+// Fix C: compact 2×2 metric grid instead of InfoRow table
 function SearchDetail({ d }: { d: NonNullable<StageDetails["search_execution"]> }) {
+  const metrics = [
+    { label: "Queries", value: d.queries_run },
+    { label: "Raw hits", value: d.raw_hits },
+    { label: "Deduped", value: d.unique_hits },
+    { label: "Passed", value: d.hits_passed },
+  ].filter(m => m.value != null);
+
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border/50 divide-y divide-border/20">
-        {d.queries_run != null && <InfoRow label="Queries run" value={d.queries_run} />}
-        {d.raw_hits != null && <InfoRow label="Raw hits" value={d.raw_hits} />}
-        {d.unique_hits != null && <InfoRow label="After dedup" value={d.unique_hits} />}
-        {d.hits_passed != null && <InfoRow label="Passed to S4" value={d.hits_passed} />}
-        {d.results_capped != null && (
-          <InfoRow
-            label="Capped"
-            value={<Pill color={d.results_capped ? "yellow" : "green"}>{d.results_capped ? "Yes" : "No"}</Pill>}
-          />
-        )}
-      </div>
+      {metrics.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {metrics.map(({ label, value }) => (
+            <div key={label} className="rounded border border-border/40 px-2.5 py-2 text-center">
+              <p className="text-base font-semibold text-text/80 tabular-nums">{value}</p>
+              <p className="text-[10px] text-muted/60 mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {d.results_capped != null && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted/70">Results capped</span>
+          <Pill color={d.results_capped ? "yellow" : "green"}>{d.results_capped ? "Yes" : "No"}</Pill>
+        </div>
+      )}
       {d.domains.length > 0 && (
         <div>
           <SectionLabel>Sources fetched</SectionLabel>
@@ -239,8 +272,14 @@ function SearchDetail({ d }: { d: NonNullable<StageDetails["search_execution"]> 
   );
 }
 
+// S4Detail: relevance is int 1-5 (Pydantic schema), not a string.
+// Use safeArr for all array fields — SSE eventDetail payloads are unvalidated Record<string,unknown>.
 function S4Detail({ d }: { d: NonNullable<StageDetails["s4_source_quality"]> }) {
-  const noSources = d.sources.length === 0;
+  const sources = safeArr<NonNullable<StageDetails["s4_source_quality"]>["sources"][number]>(d.sources);
+  const gaps = safeArr<string>(d.gaps);
+  const conflicts = safeArr<string>(d.conflicting_claims);
+  const noSources = sources.length === 0;
+
   return (
     <div className="space-y-3">
       {/* Evidence confidence — shown first */}
@@ -266,38 +305,49 @@ function S4Detail({ d }: { d: NonNullable<StageDetails["s4_source_quality"]> }) 
         </div>
       ) : (
         <div>
-          <SectionLabel>Source assessments ({d.sources.length})</SectionLabel>
+          <SectionLabel>Source assessments ({sources.length})</SectionLabel>
           <div className="space-y-2">
-            {d.sources.map((s, i) => (
-              <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1">
-                <p className="text-xs font-medium text-text/70 truncate">{s.domain}</p>
-                <div className="flex flex-wrap gap-1">
-                  {s.source_type && <Pill>{s.source_type}</Pill>}
-                  {s.slant && <Pill color="yellow">{s.slant}</Pill>}
-                  {s.confidence != null && (
-                    <Pill color={s.confidence >= 4 ? "green" : s.confidence >= 2 ? "yellow" : "red"}>
-                      conf {s.confidence}/5
-                    </Pill>
-                  )}
+            {sources.map((s, i) => {
+              const domain = safeStr(s.domain, "unknown source");
+              const srcType = safeStr(s.source_type);
+              const slant = safeStr(s.slant);
+              const conf = typeof s.confidence === "number" ? s.confidence : null;
+              const rel = typeof s.relevance === "number" ? s.relevance : null;
+              return (
+                <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1.5">
+                  <div className="flex items-start justify-between gap-1.5 min-w-0">
+                    <p className="text-xs font-medium text-text/70 truncate flex-1">{domain}</p>
+                    {conf != null && (
+                      <Pill color={conf >= 4 ? "green" : conf >= 2 ? "yellow" : "red"}>
+                        conf {conf}/5
+                      </Pill>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {srcType && <Pill>{srcType}</Pill>}
+                    {slant && <Pill color="yellow">{slant}</Pill>}
+                    {rel != null && (
+                      <Pill color={rel >= 4 ? "green" : rel >= 2 ? "yellow" : "red"}>
+                        rel {rel}/5
+                      </Pill>
+                    )}
+                  </div>
                 </div>
-                {s.relevance && (
-                  <p className="text-[11px] text-muted/60 leading-relaxed">{s.relevance}</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-      {d.gaps.length > 0 && (
+      {gaps.length > 0 && (
         <div>
           <SectionLabel>Evidence gaps</SectionLabel>
-          <StringList items={d.gaps} />
+          <StringList items={gaps} />
         </div>
       )}
-      {d.conflicting_claims.length > 0 && (
+      {conflicts.length > 0 && (
         <div>
           <SectionLabel>Conflicting claims</SectionLabel>
-          <StringList items={d.conflicting_claims} />
+          <StringList items={conflicts} />
         </div>
       )}
     </div>
@@ -375,13 +425,13 @@ function S5Detail({ d }: { d: NonNullable<StageDetails["s5_perspectives"]> }) {
 function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
   return (
     <div className="space-y-3">
-      {/* Calibration note as a prominent callout — shown first */}
+      {/* Calibration note as a prominent callout — shown first (Fix F: strip Markdown) */}
       {d.overall_calibration_note && (
         <div className="rounded border border-border/50 bg-surface/30 px-3 py-2.5">
           <p className="text-[10px] font-semibold text-muted/60 uppercase tracking-widest mb-1.5">
             Calibration note
           </p>
-          <p className="text-xs text-text/65 leading-relaxed">{d.overall_calibration_note}</p>
+          <p className="text-xs text-text/65 leading-relaxed">{stripMd(d.overall_calibration_note)}</p>
         </div>
       )}
       {/* Factual claims */}
@@ -391,7 +441,7 @@ function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
           <div className="space-y-2">
             {d.factual_claims.map((c, i) => (
               <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1">
-                <p className="text-xs text-text/70 leading-relaxed">{c.claim}</p>
+                <p className="text-xs text-text/70 leading-relaxed">{c.claim ? stripMd(c.claim) : null}</p>
                 <div className="flex flex-wrap gap-1">
                   {c.confidence != null && (
                     <Pill color={c.confidence >= 4 ? "green" : c.confidence >= 2 ? "yellow" : "red"}>
@@ -401,7 +451,7 @@ function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
                   {c.drop_if_uncorroborated && <Pill color="red">drop if uncorroborated</Pill>}
                 </div>
                 {c.suggested_hedging && (
-                  <p className="text-[11px] text-muted/60 italic">{c.suggested_hedging}</p>
+                  <p className="text-[11px] text-muted/60 italic">{stripMd(c.suggested_hedging)}</p>
                 )}
               </div>
             ))}
@@ -471,7 +521,7 @@ function S7Detail({
       {d.residual_uncertainty && (
         <div>
           <SectionLabel>Residual uncertainty</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed italic">{d.residual_uncertainty}</p>
+          <p className="text-xs text-text/60 leading-relaxed italic">{stripMd(d.residual_uncertainty)}</p>
         </div>
       )}
       {d.suggested_followups.length > 0 && (
@@ -492,12 +542,18 @@ interface Props {
 }
 
 export default function Inspector({ selected, messages }: Props) {
+  // Fix J: enhanced empty state with subtext
   if (!selected) {
     return (
       <div className="flex-1 flex items-center justify-center px-6 text-center">
-        <p className="text-xs text-muted/50 leading-relaxed max-w-[160px]">
-          Click a trace step to inspect its details.
-        </p>
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted/50 leading-relaxed max-w-[160px]">
+            Click a trace step to inspect its details.
+          </p>
+          <p className="text-[11px] text-muted/35 leading-relaxed max-w-[160px]">
+            Select any audit row on the left.
+          </p>
+        </div>
       </div>
     );
   }
@@ -532,139 +588,144 @@ export default function Inspector({ selected, messages }: Props) {
     return finalVal ?? (eventDetail as T | undefined) ?? null;
   }
 
-  // For the active stage, look for any micro-events to show context.
   const activeSummary = isActive ? (startedEvent as ProgressEvent | undefined)?.summary : undefined;
 
-  return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {/* Stage title + description */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              isComplete
-                ? "bg-green-500/80"
-                : isActive
-                ? "bg-accent animate-pulse"
-                : "bg-muted/30"
-            }`}
-          />
-          <h3 className="text-sm font-semibold text-text">
-            {meta?.title ?? latestEvent?.label ?? selected.stageId}
-          </h3>
-        </div>
-        {meta?.description && (
-          <p className="text-xs text-muted/70 leading-relaxed pl-4">
-            {meta.description}
-          </p>
-        )}
-      </div>
+  // Fix G: key the content div so inspector-enter animation fires on stage change
+  const contentKey = `${selected.messageId}/${selected.stageId}`;
 
-      {/* Status + duration row */}
-      {hasStarted && (
-        <div className="rounded border border-border/50 divide-y divide-border/30 text-xs">
-          <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-muted">Status</span>
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      {/* Fix G: keyed div triggers inspector-enter animation on selection change */}
+      <div key={contentKey} className="space-y-4 inspector-enter">
+        {/* Stage title + description */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
             <span
-              className={
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${
                 isComplete
-                  ? "text-green-400"
+                  ? "bg-green-500/80"
                   : isActive
-                  ? "text-accent"
-                  : "text-muted/50"
-              }
-            >
-              {isComplete ? "Completed" : isActive ? "In progress…" : "Pending"}
-            </span>
+                  ? "bg-accent animate-pulse"
+                  : "bg-muted/30"
+              }`}
+            />
+            <h3 className="text-sm font-semibold text-text">
+              {meta?.title ?? latestEvent?.label ?? selected.stageId}
+            </h3>
           </div>
-          {duration && (
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-muted">Duration</span>
-              <span className="text-text/70 tabular-nums">{duration}</span>
-            </div>
+          {meta?.description && (
+            <p className="text-xs text-muted/70 leading-relaxed pl-4">
+              {meta.description}
+            </p>
           )}
-          {latestEvent?.stage_num != null && (
+        </div>
+
+        {/* Status + duration row */}
+        {hasStarted && (
+          <div className="rounded border border-border/50 divide-y divide-border/30 text-xs">
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-muted">Stage</span>
-              <span className="text-text/70 tabular-nums">
-                {latestEvent.stage_num} of {latestEvent.total_stages}
+              <span className="text-muted">Status</span>
+              <span
+                className={
+                  isComplete
+                    ? "text-green-400"
+                    : isActive
+                    ? "text-accent"
+                    : "text-muted/50"
+                }
+              >
+                {isComplete ? "Completed" : isActive ? "In progress…" : "Pending"}
               </span>
             </div>
-          )}
-        </div>
-      )}
+            {duration && (
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted">Duration</span>
+                <span className="text-text/70 tabular-nums">{duration}</span>
+              </div>
+            )}
+            {latestEvent?.stage_num != null && (
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted">Stage</span>
+                <span className="text-text/70 tabular-nums">
+                  {latestEvent.stage_num} of {latestEvent.total_stages}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Active stage */}
-      {isActive && (
-        <div className="rounded border border-border/40 px-3 py-2.5 space-y-1">
-          <p className="text-xs text-accent/70 italic">Running…</p>
-          {activeSummary && (
-            <p className="text-xs text-muted/60">{activeSummary}</p>
-          )}
-        </div>
-      )}
+        {/* Active stage */}
+        {isActive && (
+          <div className="rounded border border-border/40 px-3 py-2.5 space-y-1">
+            <p className="text-xs text-accent/70 italic">Running…</p>
+            {activeSummary && (
+              <p className="text-xs text-muted/60">{activeSummary}</p>
+            )}
+          </div>
+        )}
 
-      {/* Not started yet */}
-      {!hasStarted && (
-        <div className="rounded border border-border/40 px-3 py-2.5">
-          <p className="text-xs text-muted/60 italic">
-            This stage has not started yet.
-          </p>
-        </div>
-      )}
+        {/* Not started yet */}
+        {!hasStarted && (
+          <div className="rounded border border-border/40 px-3 py-2.5">
+            <p className="text-xs text-muted/60 italic">
+              This stage has not started yet.
+            </p>
+          </div>
+        )}
 
-      {/* ── Rich stage-specific detail (available after stage completes) ── */}
+        {/* ── Rich stage-specific detail (available after stage completes) ── */}
 
-      {isComplete && (
-        <div className="border-t border-border/30 pt-3">
-          {selected.stageId === "s1_intake" && (() => {
-            const d = resolveDetail(finalStageDetails?.s1_intake);
-            return d ? <S1Detail d={d as NonNullable<StageDetails["s1_intake"]>} /> : null;
-          })()}
-          {selected.stageId === "s2_scope" && (() => {
-            const d = resolveDetail(finalStageDetails?.s2_scope);
-            return d ? <S2Detail d={d as NonNullable<StageDetails["s2_scope"]>} /> : null;
-          })()}
-          {selected.stageId === "s3_plan_search" && (() => {
-            const d = resolveDetail(finalStageDetails?.s3_plan_search);
-            return d ? <S3Detail d={d as NonNullable<StageDetails["s3_plan_search"]>} /> : null;
-          })()}
-          {selected.stageId === "search_execution" && (() => {
-            const d = resolveDetail(finalStageDetails?.search_execution);
-            return d ? <SearchDetail d={d as NonNullable<StageDetails["search_execution"]>} /> : null;
-          })()}
-          {selected.stageId === "s4_source_quality" && (() => {
-            const d = resolveDetail(finalStageDetails?.s4_source_quality);
-            return d ? <S4Detail d={d as NonNullable<StageDetails["s4_source_quality"]>} /> : null;
-          })()}
-          {selected.stageId === "s5_perspectives" && (() => {
-            const d = resolveDetail(finalStageDetails?.s5_perspectives);
-            return d ? <S5Detail d={d as NonNullable<StageDetails["s5_perspectives"]>} /> : null;
-          })()}
-          {selected.stageId === "s6_verification" && (() => {
-            const d = resolveDetail(finalStageDetails?.s6_verification);
-            return d ? <S6Detail d={d as NonNullable<StageDetails["s6_verification"]>} /> : null;
-          })()}
-          {selected.stageId === "s7_compose_check" && (() => {
-            const d = resolveDetail(finalStageDetails?.s7_compose_check);
-            return d ? (
-              <S7Detail
-                d={d as NonNullable<StageDetails["s7_compose_check"]>}
-                neutrality={msg.result?.neutrality ?? null}
-              />
-            ) : null;
-          })()}
+        {isComplete && (
+          <div className="border-t border-border/30 pt-3">
+            {selected.stageId === "s1_intake" && (() => {
+              const d = resolveDetail(finalStageDetails?.s1_intake);
+              return d ? <S1Detail d={d as NonNullable<StageDetails["s1_intake"]>} /> : null;
+            })()}
+            {selected.stageId === "s2_scope" && (() => {
+              const d = resolveDetail(finalStageDetails?.s2_scope);
+              return d ? <S2Detail d={d as NonNullable<StageDetails["s2_scope"]>} /> : null;
+            })()}
+            {selected.stageId === "s3_plan_search" && (() => {
+              const d = resolveDetail(finalStageDetails?.s3_plan_search);
+              return d ? <S3Detail d={d as NonNullable<StageDetails["s3_plan_search"]>} /> : null;
+            })()}
+            {selected.stageId === "search_execution" && (() => {
+              const d = resolveDetail(finalStageDetails?.search_execution);
+              return d ? <SearchDetail d={d as NonNullable<StageDetails["search_execution"]>} /> : null;
+            })()}
+            {selected.stageId === "s4_source_quality" && (() => {
+              const d = resolveDetail(finalStageDetails?.s4_source_quality);
+              return d ? <S4Detail d={d as NonNullable<StageDetails["s4_source_quality"]>} /> : null;
+            })()}
+            {selected.stageId === "s5_perspectives" && (() => {
+              const d = resolveDetail(finalStageDetails?.s5_perspectives);
+              return d ? <S5Detail d={d as NonNullable<StageDetails["s5_perspectives"]>} /> : null;
+            })()}
+            {selected.stageId === "s6_verification" && (() => {
+              const d = resolveDetail(finalStageDetails?.s6_verification);
+              return d ? <S6Detail d={d as NonNullable<StageDetails["s6_verification"]>} /> : null;
+            })()}
+            {selected.stageId === "s7_compose_check" && (() => {
+              const d = resolveDetail(finalStageDetails?.s7_compose_check);
+              return d ? (
+                <S7Detail
+                  d={d as NonNullable<StageDetails["s7_compose_check"]>}
+                  neutrality={msg.result?.neutrality ?? null}
+                />
+              ) : null;
+            })()}
 
-          {/* Fallback when no detail is available for this stage */}
-          {!resolveDetail(finalStageDetails?.[selected.stageId as keyof StageDetails]) && (
-            <div className="rounded border border-border/40 px-3 py-2.5">
-              <p className="text-xs text-muted/60">
-                No structured details were emitted for this stage.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Fallback when no detail is available for this stage */}
+            {!resolveDetail(finalStageDetails?.[selected.stageId as keyof StageDetails]) && (
+              <div className="rounded border border-border/40 px-3 py-2.5">
+                <p className="text-xs text-muted/60">
+                  No structured details were emitted for this stage.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

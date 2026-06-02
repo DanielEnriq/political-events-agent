@@ -164,6 +164,16 @@ export default function AssistantMessageView({
   showRaw,
 }: Props) {
   if (message.status === "error") {
+    if (message.errorKind === "interrupted") {
+      return (
+        <div className="w-full rounded-xl px-4 py-3 bg-surface border border-border/50 space-y-0.5">
+          <p className="text-xs font-medium text-muted/60">Run interrupted</p>
+          <p className="text-xs text-muted/40 leading-relaxed">
+            This run didn't complete. Start a new message to continue.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="w-full rounded-2xl rounded-bl-sm px-4 py-3 bg-red-900/20 border border-red-800/30 text-sm text-red-300/90 leading-relaxed">
         {message.error ?? "An error occurred."}
