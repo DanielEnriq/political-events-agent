@@ -74,7 +74,7 @@ function InlineAnswer({
           <p className="text-[11px] font-medium text-muted/60 uppercase tracking-wider">
             Sources
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {result.citations.map((c, i) => (
               <li key={i} className="flex gap-2 text-[12px]">
                 <span className="text-muted/35 flex-shrink-0 mt-0.5">↗</span>
@@ -101,7 +101,10 @@ function InlineAnswer({
 
       {/* Residual uncertainty */}
       {result.residual_uncertainty && (
-        <div className="border-l-2 border-border/50 pl-3 py-0.5">
+        <div className="rounded border border-border/40 bg-surface/20 px-3 py-2.5 border-l-2 border-l-muted/30">
+          <p className="text-[11px] text-muted/55 font-medium uppercase tracking-wider mb-1">
+            Residual uncertainty
+          </p>
           <p className="text-[12px] text-muted/65 italic leading-relaxed">
             {result.residual_uncertainty}
           </p>
@@ -119,7 +122,7 @@ function InlineAnswer({
               key={i}
               type="button"
               onClick={() => onFollowUp?.(f)}
-              className="block w-full text-left text-[12px] text-muted/65 hover:text-accent hover:bg-accent/5 px-2.5 py-1.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-accent/20"
+              className="block w-full text-left text-[12px] text-muted/65 hover:text-accent hover:bg-accent/8 px-3 py-2 rounded-md transition-colors cursor-pointer border border-transparent hover:border-accent/25"
             >
               <span className="text-muted/40 mr-1.5">→</span>
               {f}

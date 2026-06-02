@@ -245,7 +245,9 @@ def _build_stage_summary(
     if stage_id == "s4_source_quality":
         assessments = o.get("assessments") or []
         confidence = o.get("confidence_in_evidence")
-        conf_str = f" Evidence confidence: {confidence}/5." if confidence is not None else ""
+        conf_str = f" Confidence: {confidence}/5." if confidence is not None else ""
+        if not assessments:
+            return f"Calibrating model-knowledge limitations.{conf_str}"
         return f"Assessed {len(assessments)} source{'s' if len(assessments) != 1 else ''}.{conf_str}"
 
     if stage_id == "s5_perspectives":
@@ -337,6 +339,8 @@ def _build_micro_events(
         assessments = o.get("assessments") or []
         gaps = o.get("gaps") or []
         conflicting = o.get("conflicting_claims") or []
+        if not assessments:
+            add("No external retrieval used — answering from model knowledge.", "summary")
         for a in assessments[:5]:
             domain = urlparse(a.get("url", "")).netloc or a.get("url", "unknown")
             slant = a.get("likely_editorial_slant", "")

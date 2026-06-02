@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type {
   AssistantMessage,
   ChatMessage,
@@ -32,6 +32,7 @@ export default function ChatShell() {
   const [options, setOptions] = useState<RunOptions>(DEFAULT_OPTIONS);
   const [showRaw, setShowRaw] = useState(false);
   const [selected, setSelected] = useState<SelectedStage | null>(null);
+  const [autoFollow, setAutoFollow] = useState(true);
 
   // Refs that survive async callbacks without stale-closure risk.
   const activeIdRef = useRef<string | null>(null);
@@ -41,6 +42,23 @@ export default function ChatShell() {
 
   // Derived from messages state — correct for UI rendering.
   const running = messages.some(m => isAssistant(m) && m.status === "running");
+
+  // Auto-follow: while running and no manual selection, inspector tracks the active stage.
+  const autoSelectedStage = useMemo<SelectedStage | null>(() => {
+    if (!autoFollow) return null;
+    const runningMsg = messages.find(
+      m => isAssistant(m) && m.status === "running"
+    ) as AssistantMessage | undefined;
+    if (!runningMsg) return null;
+    const completedIds = new Set(
+      runningMsg.traceEvents.filter(e => e.status === "completed").map(e => e.stage_id)
+    );
+    const lastStarted = [...runningMsg.traceEvents].reverse().find(e => e.status === "started");
+    if (!lastStarted || completedIds.has(lastStarted.stage_id)) return null;
+    return { messageId: runningMsg.id, stageId: lastStarted.stage_id };
+  }, [autoFollow, messages]);
+
+  const effectiveSelected = selected ?? autoSelectedStage;
 
   // ── Helpers for mutating the active assistant message ────────────────────
 
@@ -63,6 +81,9 @@ export default function ChatShell() {
       // Guard with ref, not stale `running` boolean, to prevent double-submit.
       if (runningRef.current) return;
       runningRef.current = true;
+
+      setAutoFollow(true);
+      setSelected(null);
 
       const userId = generateId();
       const assistantId = generateId();
@@ -163,6 +184,7 @@ export default function ChatShell() {
     activeIdRef.current = null;
     setMessages([]);
     setSelected(null);
+    setAutoFollow(true);
   }
 
   // ── Follow-up clicks ─────────────────────────────────────────────────────
@@ -174,6 +196,7 @@ export default function ChatShell() {
   // ── Inspector selection ───────────────────────────────────────────────────
 
   function handleSelectStage(messageId: string, stageId: string) {
+    setAutoFollow(false);
     setSelected(prev =>
       prev?.messageId === messageId && prev.stageId === stageId
         ? null  // clicking same row toggles inspector off
@@ -209,7 +232,7 @@ export default function ChatShell() {
         {/* Message stream */}
         <MessageList
           messages={messages}
-          selected={selected}
+          selected={effectiveSelected}
           onSelectStage={handleSelectStage}
           onFollowUp={handleFollowUp}
           showRaw={showRaw}
@@ -233,7 +256,7 @@ export default function ChatShell() {
             Inspector
           </p>
         </div>
-        <Inspector selected={selected} messages={messages} />
+        <Inspector selected={effectiveSelected} messages={messages} />
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ const STAGE_META: Record<string, { title: string; description: string }> = {
   s4_source_quality: {
     title: "S4 — Evidence",
     description:
-      "Assesses authority, recency, editorial slant, and relevance for each retrieved source.",
+      "Assesses authority, recency, editorial slant, and relevance for each retrieved source. When no search was performed, calibrates model-knowledge limitations instead.",
   },
   s5_perspectives: {
     title: "S5 — Perspectives",
@@ -173,27 +173,27 @@ function S2Detail({ d }: { d: NonNullable<StageDetails["s2_scope"]> }) {
 function S3Detail({ d }: { d: NonNullable<StageDetails["s3_plan_search"]> }) {
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border/50 divide-y divide-border/20">
-        <InfoRow
-          label="Search needed"
-          value={
-            d.needs_search != null ? (
-              <Pill color={d.needs_search ? "yellow" : "green"}>
-                {d.needs_search ? "Yes" : "No"}
-              </Pill>
-            ) : "—"
-          }
-        />
-        {d.queries.length > 0 && (
-          <InfoRow label="Queries" value={`${d.queries.length}`} />
-        )}
+      {/* Decision — shown first */}
+      <div className="flex items-center gap-2">
+        <Pill color={d.needs_search ? "yellow" : "green"}>
+          {d.needs_search ? "Search required" : "Model knowledge sufficient"}
+        </Pill>
       </div>
+      {/* Rationale next */}
+      {d.rationale && (
+        <div>
+          <SectionLabel>Rationale</SectionLabel>
+          <p className="text-xs text-text/60 leading-relaxed">{d.rationale}</p>
+        </div>
+      )}
+      {/* Queries */}
       {d.queries.length > 0 && (
         <div>
-          <SectionLabel>Search queries</SectionLabel>
+          <SectionLabel>Search queries ({d.queries.length})</SectionLabel>
           <StringList items={d.queries} />
         </div>
       )}
+      {/* Target source types */}
       {d.target_source_types.length > 0 && (
         <div>
           <SectionLabel>Target source types</SectionLabel>
@@ -202,12 +202,6 @@ function S3Detail({ d }: { d: NonNullable<StageDetails["s3_plan_search"]> }) {
               <Pill key={i}>{t}</Pill>
             ))}
           </div>
-        </div>
-      )}
-      {d.rationale && (
-        <div>
-          <SectionLabel>Rationale</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed">{d.rationale}</p>
         </div>
       )}
       {d.why_model_knowledge_insufficient && (
@@ -246,17 +240,33 @@ function SearchDetail({ d }: { d: NonNullable<StageDetails["search_execution"]> 
 }
 
 function S4Detail({ d }: { d: NonNullable<StageDetails["s4_source_quality"]> }) {
+  const noSources = d.sources.length === 0;
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border/50 divide-y divide-border/20">
-        {d.confidence_in_evidence != null && (
-          <InfoRow label="Evidence confidence" value={`${d.confidence_in_evidence} / 5`} />
-        )}
-        <InfoRow label="Sources assessed" value={d.sources.length} />
-      </div>
-      {d.sources.length > 0 && (
+      {/* Evidence confidence — shown first */}
+      {d.confidence_in_evidence != null && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted/70">Evidence confidence</span>
+          <Pill
+            color={
+              d.confidence_in_evidence >= 4 ? "green" :
+              d.confidence_in_evidence >= 2 ? "yellow" : "red"
+            }
+          >
+            {d.confidence_in_evidence} / 5
+          </Pill>
+        </div>
+      )}
+      {/* Sources or model-knowledge note */}
+      {noSources ? (
+        <div className="rounded border border-border/40 px-3 py-2.5 bg-surface/30">
+          <p className="text-xs text-muted/70 leading-relaxed">
+            Evidence calibration (model knowledge) — no external sources were retrieved for this query.
+          </p>
+        </div>
+      ) : (
         <div>
-          <SectionLabel>Source assessments</SectionLabel>
+          <SectionLabel>Source assessments ({d.sources.length})</SectionLabel>
           <div className="space-y-2">
             {d.sources.map((s, i) => (
               <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-1">
@@ -297,14 +307,19 @@ function S4Detail({ d }: { d: NonNullable<StageDetails["s4_source_quality"]> }) 
 function S5Detail({ d }: { d: NonNullable<StageDetails["s5_perspectives"]> }) {
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border/50 divide-y divide-border/20">
-        <InfoRow label="Perspectives" value={d.perspectives.length} />
+      {/* Summary header — count of perspectives and consensus */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Pill>{d.perspectives.length} perspective{d.perspectives.length !== 1 ? "s" : ""} mapped</Pill>
         {d.areas_of_consensus.length > 0 && (
-          <InfoRow label="Consensus areas" value={d.areas_of_consensus.length} />
+          <Pill color="green">{d.areas_of_consensus.length} consensus area{d.areas_of_consensus.length !== 1 ? "s" : ""}</Pill>
+        )}
+        {d.areas_of_disagreement.length > 0 && (
+          <Pill color="yellow">{d.areas_of_disagreement.length} disagreement{d.areas_of_disagreement.length !== 1 ? "s" : ""}</Pill>
         )}
       </div>
+      {/* Perspective cards */}
       {d.perspectives.map((p, i) => (
-        <div key={i} className="rounded border border-border/30 px-2.5 py-2 space-y-2">
+        <div key={i} className="rounded border border-border/30 px-2.5 py-2.5 space-y-2">
           <p className="text-xs font-semibold text-text/80">{p.label ?? `Perspective ${i + 1}`}</p>
           {p.core_claims.length > 0 && (
             <div>
@@ -326,12 +341,14 @@ function S5Detail({ d }: { d: NonNullable<StageDetails["s5_perspectives"]> }) {
           )}
         </div>
       ))}
+      {/* Consensus */}
       {d.areas_of_consensus.length > 0 && (
         <div>
           <SectionLabel>Consensus</SectionLabel>
           <StringList items={d.areas_of_consensus} />
         </div>
       )}
+      {/* Disagreement */}
       {d.areas_of_disagreement.length > 0 && (
         <div>
           <SectionLabel>Disagreement</SectionLabel>
@@ -358,12 +375,16 @@ function S5Detail({ d }: { d: NonNullable<StageDetails["s5_perspectives"]> }) {
 function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
   return (
     <div className="space-y-3">
+      {/* Calibration note as a prominent callout — shown first */}
       {d.overall_calibration_note && (
-        <div>
-          <SectionLabel>Calibration note</SectionLabel>
-          <p className="text-xs text-text/60 leading-relaxed italic">{d.overall_calibration_note}</p>
+        <div className="rounded border border-border/50 bg-surface/30 px-3 py-2.5">
+          <p className="text-[10px] font-semibold text-muted/60 uppercase tracking-widest mb-1.5">
+            Calibration note
+          </p>
+          <p className="text-xs text-text/65 leading-relaxed">{d.overall_calibration_note}</p>
         </div>
       )}
+      {/* Factual claims */}
       {d.factual_claims.length > 0 && (
         <div>
           <SectionLabel>Factual claims ({d.factual_claims.length})</SectionLabel>
@@ -387,6 +408,7 @@ function S6Detail({ d }: { d: NonNullable<StageDetails["s6_verification"]> }) {
           </div>
         </div>
       )}
+      {/* Do not assert */}
       {d.things_i_should_not_assert.length > 0 && (
         <div>
           <SectionLabel>Do not assert</SectionLabel>
