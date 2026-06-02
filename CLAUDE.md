@@ -1,81 +1,243 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Project instructions for Claude Code.
+
+## Project identity
+
+This repository contains Revere — Agentic Political Events AI Chatbot, a Civic LLM Engineer candidacy project.
+
+This is not a generic chatbot or UI-only project. It is a reasoning-agent evaluation. The project must demonstrate:
+
+- multi-step chatbot-agent reasoning;
+- political neutrality and balanced perspective-taking;
+- hallucination prevention through uncertainty and source-quality reasoning;
+- conversational intelligence and boundary management;
+- behavior evaluation for reasoning quality, neutrality, and scope control.
+
+The UI exists to demonstrate the agent’s reasoning. Do not optimize the UI in ways that hide or bypass the reasoning architecture.
+
+## Submission requirements
+
+The final submission must include:
+
+1. GitHub repository with complete source code and documentation.
+2. A simple local web interface for testing the chatbot agent.
+3. Loom demo showing all 5 required scenarios working.
+
+Required demo scenarios:
+
+1. 2023 debt ceiling negotiations and both parties’ positions.
+2. 2024 presidential primary campaign issues.
+3. Supreme Court affirmative action decision.
+4. Weather / homework boundary-management scenario.
+5. Current immigration policy debate.
+
+## Immediate failure criteria
+
+Never introduce:
+
+- keyword-based political classification;
+- hardcoded political keyword lists;
+- regex/string-matching scope control;
+- rule-based bias detection with biased-word lists;
+- template-based political answers;
+- scripted answers for the required scenarios;
+- search/database lookup as a replacement for reasoning.
+
+Bad patterns:
+
+python POLITICAL_KEYWORDS = ["election", "vote", "congress"] BIAS_KEYWORDS = ["liberal", "conservative"]  if "weather" in query:     refuse() 
+
+The assignment explicitly tests reasoning and prompt engineering, not keyword matching.
+
+## Core architecture
+
+The Python S1–S7 pipeline is the source of truth.
+
+Stages:
+
+- S1 Intake / context normalization
+- S2 Scope reasoning
+- S3 Search planning
+- Search execution
+- S4 Source-quality reasoning
+- S5 Multi-perspective synthesis
+- S6 Verification / confidence calibration
+- S7 Final response + neutrality self-check
+
+Do not bypass these stages for political answers unless explicitly asked to implement a separate fast mode. Even in fast mode, preserve reasoning-based scope control, source-awareness, uncertainty handling, and neutrality.
+
+## Backend constraints
+
+Do not change these unless explicitly requested:
+
+- prompt semantics in revere_agent/prompts/;
+- Pydantic schemas in revere_agent/schemas/;
+- S1–S7 stage contracts;
+- orchestrator semantics;
+- LLM provider abstractions;
+- Tavily/search abstraction;
+- CLI behavior.
+
+If backend changes are necessary:
+
+- keep them small;
+- update tests;
+- explain which rubric requirement the change supports.
+
+## Frontend direction
+
+Preferred UI model:
+
+- one primary chat stream;
+- assistant message contains a live Agent Activity trace;
+- final answer appears below the completed trace;
+- right panel, if present, is an inspector for clicked trace stages;
+- no giant dashboard competing with chat;
+- no fragile dropdown-heavy trace in the main flow;
+- dark charcoal palette, muted text, cream/warm accent.
+
+The frontend should make these visible:
+
+- scope decision and reasoning;
+- search decision;
+- source-quality assessment;
+- perspectives considered;
+- verification/calibration;
+- neutrality self-check;
+- residual uncertainty.
+
+The UI should not reimplement reasoning in TypeScript. The Python backend remains the source of truth.
+
+## Streaming requirements
+
+The Next.js UI uses a FastAPI SSE backend.
+
+Streaming path:
+
+- FastAPI /chat streams start, progress, complete, and error events.
+- Next.js /api/chat route handler proxies the stream without buffering.
+- Frontend parses SSE events and updates the active assistant message.
+- Progress events update the live Agent Activity trace.
+- Complete event fills in final answer, citations, verification summary, and trace.
+
+Do not reintroduce Next.js rewrites for /api/chat; rewrites caused SSE buffering.
+
+If streaming breaks:
+
+1. Verify backend directly:
+   bash    curl -N -X POST http://localhost:8000/chat \      -H "Content-Type: application/json" \      -d '{"message":"What happened with the debt ceiling negotiations in 2023?","fast_mode":true,"skip_search":true,"max_hits":3,"raw_trace":false}'    
+
+2. Verify Next proxy:
+   bash    curl -N -X POST http://localhost:3000/api/chat \      -H "Content-Type: application/json" \      -d '{"message":"What happened with the debt ceiling negotiations in 2023?","fast_mode":true,"skip_search":true,"max_hits":3,"raw_trace":false}'    
+
+3. Fix parser/state before doing visual polish.
+
+## State management guidance
+
+For streamed frontend work:
+
+- use functional React state updates;
+- avoid stale closures;
+- keep the active assistant message as the source of truth;
+- append progress events to that assistant message;
+- on complete, update the same assistant message with the final result;
+- on error, update the same assistant message with the error.
+
+Do not keep trace state, panel state, and message state as unrelated sources of truth unless there is a clear reason.
+
+## Development process
+
+Use small phases. Do not combine backend, frontend, styling, evals, and docs in one patch.
+
+Preferred order:
+
+1. Fix correctness and streaming.
+2. Make trace visible in chat.
+3. Add right-hand inspector.
+4. Add localStorage chat list/sidebar.
+5. Polish visuals.
+6. Finish eval harness and docs.
+
+When asked for a large feature, first inspect and plan. Wait for approval before editing unless the user explicitly says to implement.
+
+Subagents may be used for inspection/review, but the main agent should make final edits. Do not let multiple subagents independently rewrite overlapping files.
 
 ## Commands
 
-```bash
-# Run all tests
-uv run pytest -q
+Run Python tests:
 
-# Run a single test file
-uv run pytest tests/test_trace_renderer.py -q
+bash uv run pytest -q 
 
-# Run a single test by name
-uv run pytest -q -k "test_trace_renderer_handles_full_trace"
+Run FastAPI backend:
 
-# Launch the Gradio UI (requires ANTHROPIC_API_KEY in .env or env)
-uv run revere-ui
+bash uv run revere-api 
 
-# Run a single pipeline turn from the CLI
-uv run revere-run
+Alternative:
 
-# Install deps
-uv sync
-```
+bash uv run uvicorn api.server:app --port 8000 
 
-## Architecture
+Run Next.js frontend:
 
-This is a Civic LLM candidacy project: an agentic political-events chatbot with structured reasoning and an auditable trace.
+bash cd web npm run dev 
 
-### Request flow
+Build Next.js frontend:
 
-Every user message passes through a deterministic 7-stage sequential pipeline (`Orchestrator.run_turn`):
+bash cd web npm run build 
 
-```
-S1 intake → S2 scope → [short-circuit if OOS] → S3 plan → [search I/O] → S4 evidence → S5 perspectives → S6 verify → S7 compose
-```
+Verify FastAPI import:
 
-- **S1** (`run_s1_intake`): Normalizes the query into `IntakeAnalysis` (canonical form, modality, etc.)
-- **S2** (`run_s2_scope`): LLM-based scope gate returning `ScopeDecision`. If `in_scope=False`, pipeline stops and `ScopeDecision.suggested_redirect` is the response. This is the anti-keyword-matching stage.
-- **S3** (`run_s3_plan_search`): Decides whether Tavily retrieval is needed, returns `SearchPlan` with 0–3 queries.
-- **Search execution**: Pure I/O (no LLM). Runs Tavily queries, deduplicates hits, caps at `max_unique_hits`.
-- **S4** (`run_s4_source_quality`): Scores each hit and produces `EvidenceBase`. If no search ran, documents the model-knowledge limitation.
-- **S5** (`run_s5_perspectives`): Multi-perspective synthesis with steelmanning, returns `PerspectiveAnalysis`.
-- **S6** (`run_s6_verification`): Chain-of-Verification pass, returns `VerificationReport` with per-claim confidence.
-- **S7** (`run_s7_compose_check`): Final composition + 6-principle neutrality self-check, returns `FinalResponse`.
+bash uv run python -c "from api.server import app; print(app.title)" 
 
-Each stage is a separate file in `revere_agent/agent/stages/` and calls `run_llm_stage()` from `_common.py`, which loads the charter + stage prompt and calls `LLMProvider.call_structured()` for a Pydantic-validated return value.
+## Manual demo checks
 
-### Key design contracts
+Before calling the project demo-ready, manually test:
 
-- **Orchestrator owns control flow; stages own prompting; LLM owns reasoning.** No branching logic inside stage files.
-- **Schemas are the cross-stage contract.** All types are in `revere_agent/schemas/`. Every model has `extra="forbid"` so Pydantic emits `additionalProperties: false` for structured outputs.
-- **Provider abstraction.** The codebase never sees a concrete model ID. Stages use logical aliases (`sonnet-main`, `haiku-fast`) resolved by the provider. `AnthropicProvider` maps these to `claude-sonnet-4-5` / `claude-haiku-4-5`. Bedrock is a second provider, structurally identical.
-- **All prompts are versioned markdown files** in `revere_agent/prompts/`. The registry hashes them at load time and stores the hash in each `StageTraceEntry.prompt_version` so trace entries are tied to exact prompt text.
+1. What's the weather like today?
+   - Should show scope reasoning and graceful boundary handling.
 
-### UI
+2. What happened with the debt ceiling negotiations in 2023? What were the key positions of both parties?
+   - Should show balanced perspectives, sources, verification, uncertainty.
 
-- `revere_agent/ui/gradio_app.py`: `build_demo()` constructs the Gradio layout. `run_chat_turn()` is the streaming generator: it spins the orchestrator in a background thread and yields progress updates every 250 ms.
-- `revere_agent/ui/trace_renderer.py`: Pure rendering — converts `TurnResult` + `ProgressEvent` list into HTML/Markdown strings for each Gradio `gr.Markdown` panel. No business logic here.
-- `revere_agent/ui/theme.css`: Custom dark-console visual theme. CSS variables are in `:root`; `.revere-*` classes are the component vocabulary.
+3. What are the key issues in the 2024 presidential primary campaigns?
+   - Should search or acknowledge freshness concerns.
 
-### Current run modes (UI checkboxes)
+4. Explain the recent Supreme Court decision on affirmative action in college admissions.
+   - Should distinguish legal, political, and social perspectives.
 
-| Mode | What changes |
-|------|-------------|
-| Full Audit (default) | 7 stages, all `sonnet-main`, max 6 hits |
-| Fast mode | Same stages, max 4 hits — `fast_mode` checkbox |
-| No Search | Same stages, Tavily disabled — `no_search` checkbox |
+5. What's the current debate around immigration policy?
+   - Should show balanced perspective-taking and source-grounding.
 
-`haiku-fast` alias exists in the provider but is not yet routed to any stage.
+## Commit hygiene
 
-### Stage latency profile (typical)
+Never commit:
 
-Each LLM stage takes 8–15 s on `sonnet-main`. With 7 stages + 2–3 Tavily calls, full-audit runs are typically 80–140 s. Out-of-scope short-circuits at S2 still take ~15–20 s because S1+S2 both use Sonnet.
+- .env
+- API keys
+- local debug logs
+- throwaway output files
 
-### Tests
+Usually safe to commit:
 
-Tests are in `tests/`. They mock the orchestrator and LLM — no live API calls. Key helpers:
-- `tests/test_trace_renderer.py` exports `_out_of_scope_turn_result()` and `_full_turn_result()` used by both test files.
-- `test_gradio_app.py` patches `_build_orchestrator` to inject a mock orchestrator.
+- api/
+- web/
+- revere_agent/
+- tests/
+- README.md
+- pyproject.toml
+- uv.lock
+- .env.example
+- CLAUDE.md
+
+## Reporting format
+
+After making changes, report:
+
+- changed files;
+- tests run and results;
+- exact launch commands;
+- what rubric/project requirement the change supports;
+- limitations or risks;
+- anything deferred.
+
+Keep reports concise and factual.

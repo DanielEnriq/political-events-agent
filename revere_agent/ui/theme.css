@@ -83,40 +83,77 @@
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  padding: 0.75rem 0.9rem 0.4rem !important;
+  padding: 0.6rem 0.9rem 0.4rem !important;
   resize: none !important;
   font-size: 0.94rem !important;
-  line-height: 1.6 !important;
+  line-height: 1.55 !important;
   color: var(--revere-text) !important;
+  min-height: unset !important;
 }
 
-/* ── Composer controls row ───────────────────────────────── */
+/* ── Composer toolbar (controls + Send/Clear in one row) ──── */
 
-#revere-controls-row {
+#revere-toolbar {
   align-items: center !important;
-  gap: 0.5rem !important;
-  padding: 0.18rem 0.7rem !important;
-  flex-wrap: nowrap !important;
+  gap: 0.45rem !important;
+  padding: 0.3rem 0.75rem 0.4rem !important;
+  flex-wrap: wrap !important;
   border-top: 1px solid var(--revere-border-subtle) !important;
 }
 
-#revere-controls-row label,
-#revere-controls-row .label-wrap span {
-  font-size: 0.71rem !important;
-  letter-spacing: 0.01em !important;
+/* Strip Gradio block chrome — no borders, no padding, auto-sized */
+#revere-toolbar > div {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-width: unset !important;
+  flex: 0 0 auto !important;
+}
+
+/* Push Clear+Send to the right by adding auto left-margin before Clear */
+#revere-toolbar > div:nth-last-child(2) {
+  margin-left: auto !important;
+}
+
+/* Compact label text for checkboxes */
+#revere-toolbar label,
+#revere-toolbar .label-wrap > span {
+  font-size: 0.73rem !important;
   color: var(--revere-text-muted) !important;
+  font-weight: 500 !important;
   text-transform: none !important;
+  letter-spacing: 0.01em !important;
+  white-space: nowrap !important;
 }
 
-#revere-controls-row input[type="range"] {
-  accent-color: var(--revere-accent);
+/* Keep native checkbox but size it down */
+#revere-toolbar input[type="checkbox"] {
+  width: 13px !important;
+  height: 13px !important;
+  accent-color: var(--revere-accent) !important;
+  flex-shrink: 0 !important;
+  margin: 0 0.18rem 0 0 !important;
 }
 
-/* ── Composer send row ───────────────────────────────────── */
+/* Sources dropdown — compact select element */
+#revere-toolbar select {
+  font-size: 0.73rem !important;
+  color: var(--revere-text-muted) !important;
+  background: var(--revere-panel-elevated) !important;
+  border: 1px solid var(--revere-border) !important;
+  border-radius: 5px !important;
+  padding: 0.18rem 0.3rem !important;
+  cursor: pointer !important;
+}
 
-#revere-send-row {
-  padding: 0.25rem 0.55rem 0.4rem !important;
-  gap: 0.4rem !important;
+/* Compact Send/Clear buttons */
+#revere-toolbar button.primary,
+#revere-toolbar button.secondary {
+  padding: 0.3rem 0.9rem !important;
+  font-size: 0.82rem !important;
+  border-radius: 6px !important;
+  width: auto !important;
 }
 
 /* ── Audit panel section header ──────────────────────────── */
@@ -144,15 +181,41 @@
   line-height: 1.5;
 }
 
-/* ── Stable two-column layout ────────────────────────────── */
+/* ── Viewport-fitting layout ─────────────────────────────── */
 
+/* Suppress horizontal scroll only — vertical is fine if content overflows */
+body {
+  overflow-x: hidden !important;
+}
+
+.gradio-container {
+  overflow-x: hidden !important;
+}
+
+/* Main two-column workspace */
 #revere-main-row {
   align-items: stretch !important;
   gap: 0.85rem !important;
+  min-height: 0 !important;
 }
 
+/* Left column: flex column so chatbot grows and composer pins to bottom */
+#revere-left-col {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  gap: 0 !important;
+}
+
+/* Chatbot fills the column, composer stays below */
+#revere-chatbot {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+/* Right column: internally scrollable, matches chatbot height */
 #revere-right-col {
-  max-height: calc(100vh - 195px) !important;
+  max-height: calc(100vh - 170px) !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scroll-behavior: smooth;
@@ -166,6 +229,26 @@
   border-radius: 2px;
 }
 #revere-right-col::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+/* ── Empty chat placeholder ──────────────────────────────── */
+
+.revere-chat-placeholder {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  color: var(--revere-text-muted);
+}
+
+.revere-chat-placeholder p {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  margin: 0 0 0.5rem;
+}
+
+.revere-chat-placeholder-hint {
+  font-size: 0.78rem !important;
+  font-style: italic;
+  opacity: 0.7;
+}
 
 /* ── Standard card ───────────────────────────────────────── */
 

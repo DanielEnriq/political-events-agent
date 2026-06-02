@@ -18,3 +18,8 @@ benchmark_*.txt
 day3_*.txt
 output*.txt
 debug_*.txt
+
+# Next.js
+web/node_modules/
+web/.next/
+web/out/

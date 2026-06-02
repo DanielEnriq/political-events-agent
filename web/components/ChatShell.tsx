@@ -1,12 +1,23 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { ChatMessage, CompletePayload, ProgressEvent, RunOptions } from "@/lib/types";
+import type {
+  AssistantMessage,
+  ChatMessage,
+  CompletePayload,
+  ProgressEvent,
+  RunOptions,
+  SelectedStage,
+} from "@/lib/types";
+import { isAssistant } from "@/lib/types";
 import { streamChat } from "@/lib/api";
-import AgentActivity from "./AgentActivity";
-import Composer from "./Composer";
-import FinalAnswer from "./FinalAnswer";
+import Composer, { type ComposerHandle } from "./Composer";
+import Inspector from "./Inspector";
 import MessageList from "./MessageList";
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
 
 const DEFAULT_OPTIONS: RunOptions = {
   fast_mode: false,
@@ -14,33 +25,62 @@ const DEFAULT_OPTIONS: RunOptions = {
   max_hits: 6,
 };
 
-type PanelState =
-  | { type: "idle" }
-  | { type: "running"; events: ProgressEvent[] }
-  | { type: "done"; result: CompletePayload; events: ProgressEvent[] };
-
 export default function ChatShell() {
+  // Messages are the single source of truth.
+  // The active assistant message lives inside this array with status="running".
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [streamingText, setStreamingText] = useState<string | undefined>();
-  const [panel, setPanel] = useState<PanelState>({ type: "idle" });
   const [options, setOptions] = useState<RunOptions>(DEFAULT_OPTIONS);
   const [showRaw, setShowRaw] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
-  // Ref tracks running state so callbacks don't close over stale booleans.
-  const runningRef = useRef(false);
+  const [selected, setSelected] = useState<SelectedStage | null>(null);
 
-  const running = panel.type === "running";
+  // Refs that survive async callbacks without stale-closure risk.
+  const activeIdRef = useRef<string | null>(null);
+  const runningRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const composerRef = useRef<ComposerHandle>(null);
+
+  // Derived from messages state — correct for UI rendering.
+  const running = messages.some(m => isAssistant(m) && m.status === "running");
+
+  // ── Helpers for mutating the active assistant message ────────────────────
+
+  function patchActive(
+    id: string,
+    patch: Partial<Omit<AssistantMessage, "id" | "role">>
+  ) {
+    setMessages(prev =>
+      prev.map(m => {
+        if (m.id !== id || !isAssistant(m)) return m;
+        return { ...m, ...patch };
+      })
+    );
+  }
+
+  // ── Submit handler ────────────────────────────────────────────────────────
 
   const handleSubmit = useCallback(
     async (message: string) => {
-      // Use ref, not the closed-over `running` derived value, to prevent
-      // double-submission when the callback is called before React re-renders.
+      // Guard with ref, not stale `running` boolean, to prevent double-submit.
       if (runningRef.current) return;
       runningRef.current = true;
 
-      setMessages((prev) => [...prev, { role: "user", content: message }]);
-      setStreamingText("Understanding your question…");
-      setPanel({ type: "running", events: [] });
+      const userId = generateId();
+      const assistantId = generateId();
+      activeIdRef.current = assistantId;
+
+      const userMsg: ChatMessage = {
+        id: userId,
+        role: "user",
+        content: message,
+      };
+      const assistantMsg: ChatMessage = {
+        id: assistantId,
+        role: "assistant",
+        status: "running",
+        traceEvents: [],
+      };
+
+      setMessages(prev => [...prev, userMsg, assistantMsg]);
 
       abortRef.current = new AbortController();
 
@@ -49,74 +89,104 @@ export default function ChatShell() {
           message,
           options,
           {
-            onProgress(event) {
-              setPanel((prev) => {
-                if (prev.type !== "running") return prev;
-                return { type: "running", events: [...prev.events, event] };
-              });
-              setStreamingText(event.label + "…");
+            onStart() {
+              // Assistant message already created with status="running" — no-op.
             },
-            onComplete(payload) {
-              runningRef.current = false;
-              setMessages((prev) => [
-                ...prev,
-                { role: "assistant", content: payload.answer, result: payload },
-              ]);
-              setStreamingText(undefined);
-              setPanel((prev) => ({
-                type: "done",
-                result: payload,
-                events: prev.type === "running" ? prev.events : [],
-              }));
+
+            onProgress(event: ProgressEvent) {
+              const id = activeIdRef.current;
+              if (!id) return;
+              setMessages(prev =>
+                prev.map(m => {
+                  if (m.id !== id || !isAssistant(m)) return m;
+                  return { ...m, traceEvents: [...m.traceEvents, event] };
+                })
+              );
             },
-            onError(msg) {
+
+            onComplete(payload: CompletePayload) {
               runningRef.current = false;
-              setMessages((prev) => [
-                ...prev,
-                { role: "assistant", content: `Error: ${msg}` },
-              ]);
-              setStreamingText(undefined);
-              setPanel({ type: "idle" });
+              const id = activeIdRef.current;
+              activeIdRef.current = null;
+              if (!id) return;
+              setMessages(prev =>
+                prev.map(m => {
+                  if (m.id !== id || !isAssistant(m)) return m;
+                  return { ...m, status: "done", result: payload };
+                })
+              );
+            },
+
+            onError(msg: string) {
+              runningRef.current = false;
+              const id = activeIdRef.current;
+              activeIdRef.current = null;
+              if (!id) return;
+              setMessages(prev =>
+                prev.map(m => {
+                  if (m.id !== id || !isAssistant(m)) return m;
+                  return { ...m, status: "error", error: msg };
+                })
+              );
             },
           },
           abortRef.current.signal
         );
       } catch (e) {
         runningRef.current = false;
-        if ((e as Error).name !== "AbortError") {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: "Connection error." },
-          ]);
+        const id = activeIdRef.current;
+        activeIdRef.current = null;
+
+        const isAbort = (e as Error).name === "AbortError";
+        if (id) {
+          setMessages(prev =>
+            prev.map(m => {
+              if (m.id !== id || !isAssistant(m)) return m;
+              return {
+                ...m,
+                status: "error",
+                error: isAbort ? "Cancelled." : "Connection error.",
+              };
+            })
+          );
         }
-        // Always reset panel on any thrown error (including AbortError from Clear).
-        setPanel({ type: "idle" });
-        setStreamingText(undefined);
       }
     },
-    [options] // `running` removed — guarded by runningRef instead
+    [options] // options captured at submit time — correct
   );
+
+  // ── Clear ─────────────────────────────────────────────────────────────────
 
   function handleClear() {
     abortRef.current?.abort();
     runningRef.current = false;
+    activeIdRef.current = null;
     setMessages([]);
-    setStreamingText(undefined);
-    setPanel({ type: "idle" });
+    setSelected(null);
   }
 
-  const lastResult =
-    panel.type === "done"
-      ? panel.result
-      : messages.findLast((m) => m.role === "assistant" && m.result)?.result;
+  // ── Follow-up clicks ─────────────────────────────────────────────────────
 
-  const panelEvents =
-    panel.type === "running" || panel.type === "done" ? panel.events : [];
+  function handleFollowUp(text: string) {
+    composerRef.current?.setValue(text);
+  }
+
+  // ── Inspector selection ───────────────────────────────────────────────────
+
+  function handleSelectStage(messageId: string, stageId: string) {
+    setSelected(prev =>
+      prev?.messageId === messageId && prev.stageId === stageId
+        ? null  // clicking same row toggles inspector off
+        : { messageId, stageId }
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-screen bg-bg text-text overflow-hidden">
-      {/* Left: chat */}
-      <div className="flex flex-col flex-1 min-w-0 border-r border-border">
+      {/* ── Chat column ── */}
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
           <div>
@@ -129,18 +199,25 @@ export default function ChatShell() {
             <input
               type="checkbox"
               checked={showRaw}
-              onChange={(e) => setShowRaw(e.target.checked)}
+              onChange={e => setShowRaw(e.target.checked)}
               className="accent-accent"
             />
             Raw trace
           </label>
         </div>
 
-        {/* Messages */}
-        <MessageList messages={messages} streamingContent={streamingText} />
+        {/* Message stream */}
+        <MessageList
+          messages={messages}
+          selected={selected}
+          onSelectStage={handleSelectStage}
+          onFollowUp={handleFollowUp}
+          showRaw={showRaw}
+        />
 
         {/* Composer */}
         <Composer
+          ref={composerRef}
           options={options}
           onOptionsChange={setOptions}
           onSubmit={handleSubmit}
@@ -149,29 +226,14 @@ export default function ChatShell() {
         />
       </div>
 
-      {/* Right: answer support */}
-      <div className="w-80 xl:w-96 flex flex-col flex-shrink-0 overflow-y-auto p-4 gap-3">
-        <div className="text-xs font-semibold uppercase tracking-widest text-muted px-1 pt-1">
-          Answer Support
+      {/* ── Right inspector ── */}
+      <div className="w-64 xl:w-72 flex-shrink-0 border-l border-border flex flex-col overflow-hidden">
+        <div className="px-4 py-4 border-b border-border flex-shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Inspector
+          </p>
         </div>
-
-        {panel.type === "running" && (
-          <AgentActivity events={panelEvents} running={true} />
-        )}
-
-        {panel.type === "done" && panelEvents.length > 0 && (
-          <AgentActivity events={panelEvents} running={false} />
-        )}
-
-        {lastResult && (
-          <FinalAnswer result={lastResult} showRaw={showRaw} />
-        )}
-
-        {panel.type === "idle" && messages.length === 0 && (
-          <div className="text-xs text-muted/50 px-1">
-            Ask a question to see the reasoning trace.
-          </div>
-        )}
+        <Inspector selected={selected} messages={messages} />
       </div>
     </div>
   );

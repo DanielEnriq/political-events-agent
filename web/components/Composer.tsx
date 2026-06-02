@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import type { RunOptions } from "@/lib/types";
 
 interface Props {
@@ -11,16 +11,28 @@ interface Props {
   disabled: boolean;
 }
 
+export interface ComposerHandle {
+  setValue(text: string): void;
+}
+
 const SOURCE_OPTIONS = [3, 4, 6, 8, 10];
 
-export default function Composer({
-  options,
-  onOptionsChange,
-  onSubmit,
-  onClear,
-  disabled,
-}: Props) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+const Composer = forwardRef<ComposerHandle, Props>(function Composer(
+  { options, onOptionsChange, onSubmit, onClear, disabled },
+  ref
+) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    setValue(text: string) {
+      if (textareaRef.current) {
+        textareaRef.current.value = text;
+        textareaRef.current.focus();
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    },
+  }));
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -30,9 +42,10 @@ export default function Composer({
   }
 
   function submit() {
-    const text = ref.current?.value.trim() ?? "";
+    const text = textareaRef.current?.value.trim() ?? "";
     if (!text || disabled) return;
-    ref.current!.value = "";
+    textareaRef.current!.value = "";
+    textareaRef.current!.style.height = "auto";
     onSubmit(text);
   }
 
@@ -44,7 +57,7 @@ export default function Composer({
     <div className="border-t border-border bg-surface">
       <div className="px-4 pt-3 pb-1">
         <textarea
-          ref={ref}
+          ref={textareaRef}
           rows={1}
           disabled={disabled}
           onKeyDown={handleKey}
@@ -58,7 +71,6 @@ export default function Composer({
         />
       </div>
       <div className="px-4 pb-3 flex items-center gap-3 flex-wrap">
-        {/* Toggle chips */}
         {(
           [
             ["fast_mode", "Fast"],
@@ -78,7 +90,6 @@ export default function Composer({
           </button>
         ))}
 
-        {/* Sources dropdown */}
         <select
           value={options.max_hits}
           onChange={(e) =>
@@ -93,7 +104,6 @@ export default function Composer({
           ))}
         </select>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
         <button
@@ -113,4 +123,6 @@ export default function Composer({
       </div>
     </div>
   );
-}
+});
+
+export default Composer;

@@ -38,3 +38,69 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* Micro-event fade-in */
+@keyframes microEventEnter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.micro-event-enter {
+  animation: microEventEnter 0.25s ease-out both;
+}
+
+/* Answer prose styles */
+.answer-prose {
+  line-height: 1.75;
+  color: rgba(245, 240, 232, 0.9);
+}
+.answer-prose p {
+  margin-bottom: 0.875rem;
+}
+.answer-prose p:last-child {
+  margin-bottom: 0;
+}
+.answer-prose h1,
+.answer-prose h2,
+.answer-prose h3 {
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+.answer-prose h1 {
+  font-size: 1rem;
+}
+.answer-prose h2 {
+  font-size: 0.9375rem;
+}
+.answer-prose h3 {
+  font-size: 0.875rem;
+}
+.answer-prose ul,
+.answer-prose ol {
+  padding-left: 1.375rem;
+  margin-bottom: 0.875rem;
+}
+.answer-prose li {
+  margin-bottom: 0.3rem;
+  line-height: 1.65;
+}
+.answer-prose strong {
+  font-weight: 600;
+  color: var(--text);
+}
+.answer-prose em {
+  font-style: italic;
+}
+.answer-prose a {
+  color: var(--accent);
+  text-decoration: underline;
+}

@@ -11,6 +11,7 @@ from revere_agent.ui.gradio_app import (
     _assistant_message,
     _set_last_assistant_content,
     consume_chat_turn,
+    run_chat_turn,
 )
 from revere_agent.ui.trace_renderer import (
     compute_mode_label,
@@ -261,3 +262,57 @@ def test_render_answer_support_completed_not_blank() -> None:
     assert "Pipeline Timeline" in html
     assert "Sources" in html
     assert "revere-card" in html
+
+
+# ── Right-panel update lifecycle (gr.skip throttling) ────────────────────────
+
+
+def test_gr_skip_is_not_a_string() -> None:
+    """gr.skip() must be a non-string sentinel so HTML yields are distinguishable."""
+    import gradio as gr
+    assert not isinstance(gr.skip(), str)
+
+
+def test_run_chat_turn_right_panel_throttling(monkeypatch) -> None:
+    """Polling loop yields gr.skip() for the right panel when no new events arrive,
+    and always yields real HTML for the initial and final outputs."""
+    import time
+    import gradio as gr
+
+    result = _out_of_scope_turn_result()
+    mock_orch = MagicMock()
+
+    def _slow_run(*args, **kwargs):
+        time.sleep(0.35)   # outlasts at least one 250 ms poll tick, adds no events
+        return result
+
+    mock_orch.run_turn.side_effect = _slow_run
+    monkeypatch.setattr(
+        "revere_agent.ui.gradio_app._build_orchestrator",
+        lambda **kwargs: (mock_orch, 6, "mock-llm", "(none)"),
+    )
+
+    all_yields = list(run_chat_turn("What is the weather?", [], False, False, 6, False))
+
+    # Expect: initial running yield + ≥1 loop tick + final completed yield
+    assert len(all_yields) >= 3, "Need at least 3 yields to exercise the throttling path"
+
+    # Initial yield — right panel must be real HTML, never gr.skip()
+    _, initial_support = all_yields[0]
+    assert isinstance(initial_support, str) and initial_support.strip(), (
+        "Initial running yield must produce non-empty HTML for the right panel"
+    )
+
+    # Intermediate ticks — at least one must use gr.skip() because the mock adds no events
+    intermediate_supports = [s for _, s in all_yields[1:-1]]
+    skip_sentinel = gr.skip()
+    assert any(s == skip_sentinel for s in intermediate_supports), (
+        "Expected gr.skip() on at least one intermediate tick when no new events arrive"
+    )
+
+    # Final yield — must always be real completed HTML, never gr.skip()
+    _, final_support = all_yields[-1]
+    assert isinstance(final_support, str) and final_support.strip(), (
+        "Final completed yield must produce non-empty HTML for the right panel"
+    )
+    assert "revere-card" in final_support

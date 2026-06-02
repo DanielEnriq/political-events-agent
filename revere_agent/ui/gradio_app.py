@@ -23,6 +23,13 @@ from revere_agent.ui.trace_renderer import (
 APP_TITLE = "Revere — Political Events Agent"
 APP_SUBTITLE = "Structured political reasoning with auditable source and neutrality trace."
 
+_CHAT_PLACEHOLDER = (
+    '<div class="revere-chat-placeholder">'
+    "<p>Ask about US political events, candidates,<br>legislation, or court decisions.</p>"
+    '<p class="revere-chat-placeholder-hint">Answer support will appear on the right.</p>'
+    "</div>"
+)
+
 THEME_CSS = (Path(__file__).with_name("theme.css")).read_text(encoding="utf-8")
 
 ChatMessage = dict[str, str]
@@ -173,18 +180,32 @@ def run_chat_turn(
 
     threading.Thread(target=_worker, daemon=True).start()
 
+    # Initial running yield — snapshot events (empty at this point).
+    events_snap = list(events)
     yield (
         _set_last_assistant_content(history, "Understanding your question"),
-        render_answer_support("running", options=options, events=events),
+        render_answer_support("running", options=options, events=events_snap),
     )
 
+    # Poll every 250 ms so the chat dot-animation stays alive.
+    # Only re-render the right panel when a new progress event arrives;
+    # otherwise yield gr.skip() to avoid flooding gr.Markdown with hundreds
+    # of identical large-HTML updates that build a browser-side SSE backlog.
     _dot_idx = 0
+    _last_event_count = len(events_snap)
     while not done.wait(0.25):
         _dot_idx += 1
         dot = _DOT_CYCLE[_dot_idx % 4]
-        label = _active_stage_label(events)
+        events_snap = list(events)                  # thread-safe snapshot per tick
+        label = _active_stage_label(events_snap)
         live_history = _set_last_assistant_content(history, label + dot)
-        yield (live_history, render_answer_support("running", options=options, events=events))
+        new_count = len(events_snap)
+        if new_count != _last_event_count:          # new stage event — update right panel
+            _last_event_count = new_count
+            support = render_answer_support("running", options=options, events=events_snap)
+        else:
+            support = gr.skip()                     # no new events — hold right panel
+        yield (live_history, support)
 
     if "error" in error_holder:
         err = (
@@ -192,9 +213,12 @@ def run_chat_turn(
             f"{error_holder['error']}"
         )
         history = _set_last_assistant_content(history, err)
+        events_snap = list(events)
         yield (history, render_answer_support("error", options=options, error_message=err))
         return
 
+    # Final completed yield — always a full render, never gr.skip().
+    events_snap = list(events)
     result = result_holder["result"]
     answer = _assistant_message(result)
     history = _set_last_assistant_content(history, answer)
@@ -203,7 +227,7 @@ def run_chat_turn(
         render_answer_support(
             "completed",
             options=options,
-            events=events,
+            events=events_snap,
             result=result,
             include_raw_trace=show_raw_json,
         ),
@@ -237,21 +261,24 @@ def build_demo() -> gr.Blocks:
             # Left: conversation + composer
             with gr.Column(scale=6, elem_id="revere-left-col"):
                 chatbot = gr.Chatbot(
-                    height=520,
+                    height="calc(100vh - 370px)",
+                    min_height=200,
                     value=[],
                     elem_id="revere-chatbot",
                     show_label=False,
+                    placeholder=_CHAT_PLACEHOLDER,
                 )
-                # Composer card: textarea + controls + send button in one visual unit
+                # Composer card: textarea + toolbar (controls + actions) in one visual unit
                 with gr.Group(elem_id="revere-composer"):
                     user_input = gr.Textbox(
                         placeholder="Ask about US political events, candidates, legislation…",
-                        lines=2,
+                        lines=1,
+                        max_lines=6,
                         show_label=False,
                         elem_id="revere-input",
                         container=False,
                     )
-                    with gr.Row(elem_id="revere-controls-row"):
+                    with gr.Row(elem_id="revere-toolbar"):
                         fast_mode = gr.Checkbox(
                             label="Fast audit",
                             value=False,
@@ -270,18 +297,16 @@ def build_demo() -> gr.Blocks:
                             interactive=True,
                             container=False,
                         )
-                        max_hits = gr.Slider(
-                            minimum=1,
-                            maximum=10,
-                            step=1,
+                        max_hits = gr.Dropdown(
+                            choices=[3, 4, 6, 8, 10],
                             value=6,
                             label="Sources",
-                            scale=3,
+                            scale=0,
+                            min_width=90,
                             interactive=True,
                         )
-                    with gr.Row(elem_id="revere-send-row"):
-                        submit_btn = gr.Button("Send", variant="primary", scale=4)
-                        clear_btn = gr.Button("Clear", scale=1)
+                        clear_btn = gr.Button("Clear", scale=0, min_width=65)
+                        submit_btn = gr.Button("Send", variant="primary", scale=0, min_width=90)
 
             # Right: single unified answer-support panel
             with gr.Column(scale=4, elem_id="revere-right-col"):
