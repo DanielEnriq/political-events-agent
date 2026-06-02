@@ -89,6 +89,14 @@ export interface StageDetails {
       relevance: number | null;
       confidence: number | null;
     }>;
+    sufficiency?: {
+      restricted_empirical_claims_required: boolean;
+      primary_sources_missing: boolean;
+      requested_source_types_missing: string[];
+      perspective_coverage_asymmetric: boolean;
+      confidence_in_evidence: number | null;
+      reasons: string[];
+    } | null;
   };
   s5_perspectives?: {
     perspectives: Array<{

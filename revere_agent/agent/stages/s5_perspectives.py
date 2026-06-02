@@ -8,6 +8,7 @@ the right inputs.
 
 from __future__ import annotations
 
+from revere_agent.agent.evidence_sufficiency import EvidenceSufficiency
 from revere_agent.llm.provider import LLMProvider
 from revere_agent.schemas import EvidenceBase, IntakeAnalysis, PerspectiveAnalysis
 
@@ -54,14 +55,18 @@ def run_s5_perspectives(
     provider: LLMProvider,
     intake: IntakeAnalysis,
     evidence: EvidenceBase,
+    *,
+    sufficiency: EvidenceSufficiency | None = None,
 ) -> PerspectiveAnalysis:
     """Produce a balanced, steelmanned multi-perspective analysis."""
     compact_evidence = _compact_evidence_for_s5(evidence)
+    sufficiency_note = sufficiency.as_prompt_note() if sufficiency is not None else None
     user_content = (
         f"Canonical query:\n{intake.canonical_query}\n\n"
         f"Intake notes (S1):\n{intake.notes}\n\n"
         f"Evidence summary (S4):\n{compact_evidence}\n\n"
-        "Apply the Multi-Perspective Synthesis instructions above. "
+        + (f"{sufficiency_note}\n\n" if sufficiency_note else "")
+        + "Apply the Multi-Perspective Synthesis instructions above. "
         "Return a PerspectiveAnalysis. Symmetry checks are non-negotiable: "
         "before returning, verify equal core_claims count and roughly equal "
         "depth across perspectives, and revise if either fails."

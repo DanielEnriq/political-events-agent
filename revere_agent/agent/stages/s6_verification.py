@@ -6,6 +6,7 @@ can apply when composing the user-facing answer.
 
 from __future__ import annotations
 
+from revere_agent.agent.evidence_sufficiency import EvidenceSufficiency
 from revere_agent.llm.provider import LLMProvider
 from revere_agent.schemas import (
     EvidenceBase,
@@ -74,6 +75,8 @@ def run_s6_verification(
     intake: IntakeAnalysis,
     evidence: EvidenceBase,
     perspectives: PerspectiveAnalysis,
+    *,
+    sufficiency: EvidenceSufficiency | None = None,
 ) -> VerificationReport:
     """Generate a concrete claim-level verification/calibration report."""
     weak_evidence = (not evidence.assessments) or (evidence.confidence_in_evidence <= 3)
@@ -82,10 +85,12 @@ def run_s6_verification(
         if weak_evidence
         else "NO: evidence has some grounding."
     )
+    sufficiency_note = sufficiency.as_prompt_note() if sufficiency is not None else None
     user_content = (
         f"Canonical query:\n{intake.canonical_query}\n\n"
         f"Weak evidence mode: {weak_evidence_note}\n\n"
-        f"Evidence summary (S4):\n{_compact_evidence(evidence)}\n\n"
+        + (f"{sufficiency_note}\n\n" if sufficiency_note else "")
+        + f"Evidence summary (S4):\n{_compact_evidence(evidence)}\n\n"
         f"Perspective summary (S5):\n{_compact_perspectives(perspectives)}\n\n"
         "Apply Stage 6 instructions and return a VerificationReport."
     )

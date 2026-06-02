@@ -338,6 +338,39 @@ function S4Detail({ d }: { d: NonNullable<StageDetails["s4_source_quality"]> }) 
           </div>
         </div>
       )}
+      {/* Evidence sufficiency */}
+      {d.sufficiency && (
+        <div>
+          <SectionLabel>Evidence sufficiency</SectionLabel>
+          <div className="rounded border border-border/40 px-2.5 py-2 space-y-1.5">
+            <div className="flex flex-wrap gap-1">
+              <Pill color={d.sufficiency.restricted_empirical_claims_required ? "red" : "green"}>
+                {d.sufficiency.restricted_empirical_claims_required ? "restricted mode" : "unrestricted"}
+              </Pill>
+              {d.sufficiency.primary_sources_missing && (
+                <Pill color="red">primary missing</Pill>
+              )}
+              {d.sufficiency.perspective_coverage_asymmetric && (
+                <Pill color="yellow">asymmetric coverage</Pill>
+              )}
+            </div>
+            {safeArr<string>(d.sufficiency.requested_source_types_missing).length > 0 && (
+              <p className="text-[11px] text-yellow-400/70">
+                Missing requested: {safeArr<string>(d.sufficiency.requested_source_types_missing).join(", ")}
+              </p>
+            )}
+            {safeArr<string>(d.sufficiency.reasons).length > 0 && (
+              <ul className="space-y-1">
+                {safeArr<string>(d.sufficiency.reasons).map((r, i) => (
+                  <li key={i} className="text-[11px] text-muted/60 leading-relaxed pl-2 border-l border-border/30">
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
       {gaps.length > 0 && (
         <div>
           <SectionLabel>Evidence gaps</SectionLabel>

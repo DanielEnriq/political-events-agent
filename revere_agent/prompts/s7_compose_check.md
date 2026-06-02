@@ -29,6 +29,12 @@ and a structured neutrality self-check in `FinalResponse`.
   - If evidence gaps are material to the answer, note them where the claim
     appears — not only in `residual_uncertainty`.
 
+If an **Evidence sufficiency constraints** block appears in your inputs,
+treat it as binding for empirical claim calibration in `response_text` and
+for the `evidence_proportional_to_sources` self-check — it summarizes S3/S4
+source gaps and restricts bare empirical assertions from underserved
+perspectives.
+
 ## Citation rules
 - If S4 has retrieved assessments, include citations for key factual claims.
 - Use markdown-style labels in prose only when genuinely supporting a claim.

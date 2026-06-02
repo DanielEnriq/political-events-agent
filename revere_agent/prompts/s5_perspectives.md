@@ -225,3 +225,8 @@ weak-evidence behavior *selectively* to the underserved perspective's
 empirical claims. The better-sourced perspective's verified facts may be
 stated more directly. Do not artificially weaken well-sourced claims to
 achieve surface symmetry.
+
+If an **Evidence sufficiency constraints** block appears in your inputs,
+treat it as binding — it operationalizes the constraints above based on S3
+target source types and S4 assessment results, and must be obeyed even if the
+general weak-evidence trigger conditions above are not all met.

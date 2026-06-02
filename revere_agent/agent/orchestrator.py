@@ -39,6 +39,7 @@ from revere_agent.schemas import (
 )
 from revere_agent.search.provider import SearchProvider
 
+from .evidence_sufficiency import EvidenceSufficiency, derive_evidence_sufficiency
 from .stages import (
     run_s1_intake,
     run_s2_scope,
@@ -68,6 +69,7 @@ class TurnResult:
     search_hits: list[SearchHit] = field(default_factory=list)
     search_stats: "SearchExecutionStats" | None = None
     evidence: EvidenceBase | None = None
+    evidence_sufficiency: "EvidenceSufficiency | None" = None
     perspectives: PerspectiveAnalysis | None = None
     verification: VerificationReport | None = None
     final_response: FinalResponse | None = None
@@ -291,12 +293,15 @@ class Orchestrator:
             _emit=_emit,
         )
 
+        # ── Evidence sufficiency (deterministic — no LLM call) ───────
+        sufficiency = derive_evidence_sufficiency(plan, evidence, search_executed)
+
         # ── S5 ────────────────────────────────────────────────────────
         _progress("s5_perspectives")
         perspectives = self._record(
             trace,
             "s5_perspectives",
-            lambda: run_s5_perspectives(self.llm, intake, evidence),
+            lambda: run_s5_perspectives(self.llm, intake, evidence, sufficiency=sufficiency),
             _emit=_emit,
         )
 
@@ -305,7 +310,9 @@ class Orchestrator:
         verification = self._record(
             trace,
             "s6_verification",
-            lambda: run_s6_verification(self.llm, intake, evidence, perspectives),
+            lambda: run_s6_verification(
+                self.llm, intake, evidence, perspectives, sufficiency=sufficiency
+            ),
             _emit=_emit,
         )
 
@@ -320,6 +327,7 @@ class Orchestrator:
                 evidence,
                 perspectives,
                 verification,
+                sufficiency=sufficiency,
             ),
             _emit=_emit,
         )
@@ -334,6 +342,7 @@ class Orchestrator:
             search_hits=hits,
             search_stats=search_stats,
             evidence=evidence,
+            evidence_sufficiency=sufficiency,
             perspectives=perspectives,
             verification=verification,
             final_response=final_response,

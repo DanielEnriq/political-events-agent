@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from revere_agent.agent.evidence_sufficiency import EvidenceSufficiency
 from revere_agent.llm.provider import LLMProvider
 from revere_agent.schemas import (
     EvidenceBase,
@@ -20,13 +21,17 @@ def run_s7_compose_check(
     evidence: EvidenceBase,
     perspectives: PerspectiveAnalysis,
     verification: VerificationReport,
+    *,
+    sufficiency: EvidenceSufficiency | None = None,
 ) -> FinalResponse:
     """Compose user-facing answer with citation + self-check constraints."""
     no_retrieved_sources = not evidence.assessments
+    sufficiency_note = sufficiency.as_prompt_note() if sufficiency is not None else None
     user_content = (
         f"Canonical query:\n{intake.canonical_query}\n\n"
         f"No retrieved sources: {'YES' if no_retrieved_sources else 'NO'}\n\n"
-        f"Evidence base (S4):\n{evidence.model_dump_json(indent=2)}\n\n"
+        + (f"{sufficiency_note}\n\n" if sufficiency_note else "")
+        + f"Evidence base (S4):\n{evidence.model_dump_json(indent=2)}\n\n"
         f"Perspective analysis (S5):\n{perspectives.model_dump_json(indent=2)}\n\n"
         f"Verification report (S6):\n{verification.model_dump_json(indent=2)}\n\n"
         "Apply Stage 7 instructions and return a FinalResponse."

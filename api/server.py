@@ -127,6 +127,7 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
     evidence = getattr(result, "evidence", None)
     if evidence:
         assessments = list(getattr(evidence, "assessments", None) or [])
+        suf = getattr(result, "evidence_sufficiency", None)
         details["s4_source_quality"] = {
             "confidence_in_evidence": getattr(evidence, "confidence_in_evidence", None),
             "gaps": list(getattr(evidence, "gaps", None) or []),
@@ -141,6 +142,14 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
                 }
                 for a in assessments
             ],
+            "sufficiency": {
+                "restricted_empirical_claims_required": getattr(suf, "restricted_empirical_claims_required", False),
+                "primary_sources_missing": getattr(suf, "primary_sources_missing", False),
+                "requested_source_types_missing": list(getattr(suf, "requested_source_types_missing", None) or []),
+                "perspective_coverage_asymmetric": getattr(suf, "perspective_coverage_asymmetric", False),
+                "confidence_in_evidence": getattr(suf, "confidence_in_evidence", None),
+                "reasons": list(getattr(suf, "reasons", None) or []),
+            } if suf is not None else None,
         }
 
     # S5 — Perspectives

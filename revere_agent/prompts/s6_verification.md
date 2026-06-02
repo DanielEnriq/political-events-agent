@@ -105,6 +105,11 @@ from that perspective as high-risk. For such claims: prefer
 `model_prior` or `unsupported`; add hedging; and set
 `drop_if_uncorroborated=true` for outcome-changing assertions.
 
+If an **Evidence sufficiency constraints** block appears in your inputs,
+treat it as binding — it operationalizes the constraints above from S3/S4
+results and must be applied even if the general weak-evidence trigger
+conditions above are not all met.
+
 ## Overall fields
 - `overall_calibration_note`: 1-2 concise sentences.
 - `things_i_should_not_assert`: concrete claims to avoid in final response.
