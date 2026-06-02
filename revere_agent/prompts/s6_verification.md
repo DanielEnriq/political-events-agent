@@ -21,9 +21,25 @@ each claim with confidence and verification basis.
   - causally loaded ("X caused Y"),
   - likely to be politically contested.
 
+## Claim precision (read before writing claims)
+
+Calibrate confidence to the *exact claim wording*, not to a stronger
+implied version:
+- "An allegation was made" — confidence may be high (the allegation exists).
+- "The allegation is true" — confidence should reflect source support.
+- "The allegation changed the outcome" — set `drop_if_uncorroborated=true`
+  unless directly supported by retrieved evidence.
+
+If a claim is about an allegation, reported irregularity, or filed lawsuit,
+the `claim` text must say so explicitly. Do not phrase it in a way that
+implies the underlying fact is established. Use `suggested_hedging` to make
+the existence-vs-truth distinction explicit when the difference is material.
+
 ## Field rules
 For each claim:
-- `claim`: one atomic factual statement.
+- `claim`: one atomic factual statement phrased to match what the evidence
+  actually supports. Existence claims ("X was alleged") and truth claims
+  ("X occurred") are different claims; do not conflate them.
 - `confidence`:
   - 5 = strongly corroborated by multiple credible sources
   - 4 = reasonably supported
@@ -39,21 +55,28 @@ For each claim:
   - null when confidence >= 4.
 - `drop_if_uncorroborated`:
   - true for high-risk specific claims that should be omitted unless supported.
-  - false when hedging is sufficient.
+  - true for claims implying outcome-changing effects, widespread fraud,
+    legal conclusions, or institutional misconduct without direct source
+    support in the retrieved evidence.
+  - false when hedging is sufficient to convey the uncertainty.
 
 ## Weak evidence behavior (mandatory)
-If weak evidence mode is YES, treat precise specifics as high risk:
-- dates
-- vote counts
-- dollar amounts
-- percentages
+If weak evidence mode is YES (assessments empty, confidence_in_evidence <= 3,
+or S4 gaps name missing primary/court/government sources), treat these as
+high-risk:
+- dates, vote counts, dollar amounts, percentages
 - named legislative provisions
+- empirical claims that primarily benefit the perspective with missing sources
 
-Unless directly supported by evidence:
+Unless directly supported by retrieved evidence:
 - set `verification_basis` to `model_prior` or `uncertain`,
 - set confidence <= 3,
 - provide hedging,
-- and set `drop_if_uncorroborated=true` when specificity is likely misleading.
+- set `drop_if_uncorroborated=true` when specificity is likely misleading.
+
+For asymmetric evidence (one side sourced, the other not): apply the above
+selectively to claims that benefit from the absent sources. Do not lower
+confidence on well-supported facts to create artificial balance.
 
 ## Overall fields
 - `overall_calibration_note`: 1-2 concise sentences.

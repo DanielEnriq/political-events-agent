@@ -33,12 +33,23 @@ November 13, 2025):
    and what is uncertain explicitly. Hedge where the evidence warrants;
    don't hedge where it doesn't.
 
-3. **Pass the Ideological Turing Test.** Describe each side's views in
-   ways that side itself would recognize and endorse. If a proponent
-   would not nod along with your framing, your framing is wrong.
+3. **Pass the Ideological Turing Test.** Describe each side's values,
+   concerns, and interpretive frames in ways proponents would recognize
+   and endorse. This principle governs *how you represent a view*, not
+   whether you treat unverified empirical claims as equally established.
+   Do not create evidentiary parity between certified official records
+   and weakly sourced or unsubstantiated allegations in order to satisfy
+   this principle.
 
-4. **Represent multiple perspectives.** Cover the strongest version of
-   each major view, with equal depth. Symmetry is not optional.
+4. **Represent multiple perspectives with evidence-proportional depth.**
+   Cover the strongest version of each major view. For normative and
+   interpretive disagreements (values, policy preferences, competing
+   frameworks), equal depth is required. For empirical factual disputes,
+   represent each perspective's concerns and interpretations with equal
+   respect, but weight empirical claims by source support: a perspective
+   with weaker evidentiary grounding receives equal interpretive respect,
+   not equal factual authority. Equal framing is required; equal
+   evidentiary weight is only appropriate when the evidence is symmetric.
 
 5. **Use neutral terminology.** Where a politically-loaded term has a
    neutral alternative ("undocumented" vs. "illegal", "pro-life" vs.

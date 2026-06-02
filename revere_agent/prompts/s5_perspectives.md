@@ -84,16 +84,25 @@ A brief honest critique of your own write-up of this perspective:
 
 **Before you finalize**, check your draft against these:
 
-1. **Equal count.** Same number of core_claims for every perspective.
-2. **Equal depth.** Roughly the same word count per perspective. A
-   2x difference is a failure.
+1. **Equal count.** Aim for the same number of `core_claims` per
+   perspective. For normative and interpretive claims this is a hard
+   requirement. For empirical factual claims, match count only when you
+   have comparable evidentiary grounding — do not pad with unverified
+   specifics to reach symmetry.
+2. **Equal depth for framing.** Equal word count is required for values,
+   concerns, and interpretive arguments. Empirical claim sections may
+   differ in length when the evidence base is asymmetric.
 3. **Equal generosity.** Each perspective uses language a proponent
    would write, not language a critic would use to caricature.
 4. **No tells.** No subtle "but" clauses, no scare quotes, no qualifiers
-   that load one side ("supporters claim…" on one side, "research shows…"
-   on the other).
+   that load one side. *Exception*: attribution phrases such as
+   "proponents argue," "critics allege," or "this view points to" are
+   accuracy markers required for unverified empirical claims — they are
+   not loaded qualifiers.
 
-If any of these fail, revise BEFORE you return. Symmetry is non-negotiable.
+Interpretive and normative symmetry is non-negotiable. For empirical
+factual claims, depth follows the evidence base, not the symmetry
+requirement.
 
 ## areas_of_consensus
 Specific facts or framings most perspectives accept. Examples: a bill
@@ -132,9 +141,15 @@ Concision targets:
 
 - Do not say which side is correct.
 - Do not let one perspective "win" via more sympathetic framing.
-- If the evidence base is one-sided, name it explicitly in the
-  underserved perspective's `steelman_quality_self_assessment` and reason
-  from first principles about what its proponents would argue.
+- If the evidence base is one-sided, name it in the underserved
+  perspective's `steelman_quality_self_assessment`. You may reason from
+  first principles to reconstruct that side's *values, concerns, and
+  interpretive frame* — but not to supply empirical specifics that lack
+  source support. Allegations, statistics, or institutional-misconduct
+  claims without retrieved evidence must be attributed ("proponents
+  allege," "critics point to claims of…") or omitted from `core_claims`
+  and `strongest_evidence`. Reasoning from first principles is for
+  interpretive framing, not for filling evidentiary gaps.
 - Use neutral terminology in YOUR narration (e.g., "undocumented
   immigrants"). Quote partisan terms only when summarizing a side's own
   framing.
@@ -143,15 +158,24 @@ Concision targets:
 
 ## Weak-evidence behavior (required)
 
-If either condition is true:
+Apply the following if **any** of these conditions hold:
 - `EvidenceBase.assessments` is empty, OR
-- `EvidenceBase.confidence_in_evidence <= 3`
+- `EvidenceBase.confidence_in_evidence <= 3`, OR
+- `EvidenceBase.gaps` names missing primary, government, court, or
+  perspective-representative sources.
 
-then apply all of the following:
+When weak-evidence behavior applies:
 - Do **not** present specific figures, vote counts, dates, or dollar amounts
   as verified evidence.
 - In each perspective's `steelman_quality_self_assessment`, explicitly note
   source limitations and that specific factual claims would need verification.
-- Use cautious qualifiers for specifics such as "generally understood,"
-  "commonly reported," or "would need verification."
+- Use cautious qualifiers for specifics: "generally understood," "commonly
+  reported," or "would need verification."
 - Prefer conceptual framing of the issue over precise factual claims.
+
+**Asymmetric coverage:** If `EvidenceBase.gaps` indicates that sources for
+one perspective are missing while the other's are present, apply
+weak-evidence behavior *selectively* to the underserved perspective's
+empirical claims. The better-sourced perspective's verified facts may be
+stated more directly. Do not artificially weaken well-sourced claims to
+achieve surface symmetry.
