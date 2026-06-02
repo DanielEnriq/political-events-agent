@@ -401,9 +401,10 @@ def _build_micro_events(
             "neutral_terminology_used",
             "equal_depth_across_perspectives",
             "respectful_tone",
+            "evidence_proportional_to_sources",
         ]
         passed = sum(1 for k in check_keys if nsc.get(k, True))
-        add(f"Neutrality self-check: {passed}/6 criteria passed.", "neutrality")
+        add(f"Neutrality self-check: {passed}/{len(check_keys)} criteria passed.", "neutrality")
         for r in revisions[:3]:
             add(f"Revised: {_trunc(r, 100)}", "neutrality")
 
@@ -631,6 +632,7 @@ def _stream_turn(req: ChatRequest):
             "neutral_terminology_used": nsc.neutral_terminology_used,
             "equal_depth_across_perspectives": nsc.equal_depth_across_perspectives,
             "respectful_tone": nsc.respectful_tone,
+            "evidence_proportional_to_sources": nsc.evidence_proportional_to_sources,
             "revisions_made": nsc.revisions_made,
         }
 

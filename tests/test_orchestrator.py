@@ -267,6 +267,7 @@ def _final_response() -> FinalResponse:
             neutral_terminology_used=True,
             equal_depth_across_perspectives=True,
             respectful_tone=True,
+            evidence_proportional_to_sources=True,
             revisions_made=["Softened one uncorroborated numeric claim."],
         ),
         residual_uncertainty="Primary-specific issue emphasis varies by source and timing.",

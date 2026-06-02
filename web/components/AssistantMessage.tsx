@@ -24,7 +24,7 @@ function InlineAnswer({
   }, []);
 
   const n = result.neutrality;
-  const neutralityPassed = n
+  const neutralityChecks = n
     ? [
         n.avoided_unsolicited_opinion,
         n.factually_accurate_and_comprehensive,
@@ -32,9 +32,13 @@ function InlineAnswer({
         n.neutral_terminology_used,
         n.equal_depth_across_perspectives,
         n.respectful_tone,
-      ].filter(Boolean).length
+        ...(n.evidence_proportional_to_sources !== undefined
+          ? [n.evidence_proportional_to_sources]
+          : []),
+      ]
     : null;
-  const neutralityTotal = 6;
+  const neutralityPassed = neutralityChecks ? neutralityChecks.filter(Boolean).length : null;
+  const neutralityTotal = neutralityChecks ? neutralityChecks.length : 6;
 
   return (
     <div

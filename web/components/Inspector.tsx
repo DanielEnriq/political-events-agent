@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatMessage, ProgressEvent, SelectedStage, StageDetails } from "@/lib/types";
+import type { ChatMessage, NeutralityCheck, ProgressEvent, SelectedStage, StageDetails } from "@/lib/types";
 import { isAssistant } from "@/lib/types";
 
 // ── Stage metadata ────────────────────────────────────────────────────────────
@@ -518,15 +518,7 @@ function S7Detail({
   neutrality,
 }: {
   d: NonNullable<StageDetails["s7_compose_check"]>;
-  neutrality: {
-    avoided_unsolicited_opinion: boolean;
-    factually_accurate_and_comprehensive: boolean;
-    steelmanned_each_perspective: boolean;
-    neutral_terminology_used: boolean;
-    equal_depth_across_perspectives: boolean;
-    respectful_tone: boolean;
-    revisions_made: string[];
-  } | null;
+  neutrality: NeutralityCheck | null;
 }) {
   const neutralityRows: [string, boolean][] = neutrality
     ? [
@@ -536,6 +528,9 @@ function S7Detail({
         ["Neutral terminology", neutrality.neutral_terminology_used],
         ["Equal depth across perspectives", neutrality.equal_depth_across_perspectives],
         ["Respectful tone", neutrality.respectful_tone],
+        ...(neutrality.evidence_proportional_to_sources !== undefined
+          ? [["Evidence proportional to sources", neutrality.evidence_proportional_to_sources] as [string, boolean]]
+          : []),
       ]
     : [];
 

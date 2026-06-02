@@ -22,7 +22,7 @@ class Citation(BaseModel):
 
 
 class SelfCheckReport(BaseModel):
-    """Self-evaluation against the six Anthropic political principles.
+    """Self-evaluation against the Anthropic political principles.
 
     Source for the principles: Anthropic, "Measuring political bias in
     Claude" (Nov 13, 2025). https://www.anthropic.com/news/political-even-handedness
@@ -36,6 +36,11 @@ class SelfCheckReport(BaseModel):
     neutral_terminology_used: bool
     equal_depth_across_perspectives: bool
     respectful_tone: bool
+    evidence_proportional_to_sources: bool = Field(
+        description="Empirical claims are weighted according to source support; "
+        "weakly sourced or disputed claims are attributed or hedged; no false "
+        "evidentiary parity between verified records and unsupported allegations.",
+    )
     revisions_made: list[str] = Field(
         default_factory=list,
         description="Concrete changes made between draft and final, "

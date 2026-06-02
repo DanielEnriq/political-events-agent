@@ -73,6 +73,7 @@ def _full_trace() -> ReasoningTrace:
             neutral_terminology_used=True,
             equal_depth_across_perspectives=True,
             respectful_tone=True,
+            evidence_proportional_to_sources=True,
             revisions_made=["Softened one uncorroborated claim."],
         ),
         residual_uncertainty="Primary-specific emphasis varies by source.",

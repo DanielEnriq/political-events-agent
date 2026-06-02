@@ -43,6 +43,8 @@ export interface NeutralityCheck {
   neutral_terminology_used: boolean;
   equal_depth_across_perspectives: boolean;
   respectful_tone: boolean;
+  /** Optional: absent in old localStorage messages; present from Phase 3 onwards. */
+  evidence_proportional_to_sources?: boolean;
   revisions_made: string[];
 }
 
