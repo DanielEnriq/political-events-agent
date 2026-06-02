@@ -729,7 +729,7 @@ export default function Inspector({ selected, messages }: Props) {
         {/* Active stage */}
         {isActive && (
           <div className="rounded border border-border/40 px-3 py-2.5 space-y-1">
-            <p className="text-xs text-accent/70 italic">Running…</p>
+            <p className="text-xs text-accent/70 italic active-stage-breathe">Running…</p>
             {activeSummary && (
               <p className="text-xs text-muted/60">{activeSummary}</p>
             )}

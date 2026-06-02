@@ -203,7 +203,7 @@ export default function TraceCard({ message, selectedStageId, onSelectStage }: P
                   isComplete
                     ? "text-text/45"
                     : isActive
-                    ? "text-text/75"
+                    ? "text-text/75 active-stage-breathe"
                     : "text-muted/35",
                 ].join(" ")}
               >

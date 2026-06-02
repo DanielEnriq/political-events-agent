@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { AssistantMessage as AssistantMsg, CompletePayload } from "@/lib/types";
 import TraceCard from "./TraceCard";
-
-// ── Answer fade-in — renders full Markdown immediately, fades in smoothly ─────
 
 function hostname(url: string): string {
   try {
@@ -14,6 +12,9 @@ function hostname(url: string): string {
     return url;
   }
 }
+
+// ── InlineAnswer ──────────────────────────────────────────────────────────────
+// Full markdown rendered immediately; container fades/slides in via CSS animation.
 
 function InlineAnswer({
   result,
@@ -24,13 +25,7 @@ function InlineAnswer({
   showRaw: boolean;
   onFollowUp?: (text: string) => void;
 }) {
-  const [visible, setVisible] = useState(false);
   const [uncertaintyOpen, setUncertaintyOpen] = useState(false);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
 
   const n = result.neutrality;
   const neutralityChecks = n
@@ -50,12 +45,8 @@ function InlineAnswer({
   const neutralityTotal = neutralityChecks ? neutralityChecks.length : 6;
 
   return (
-    <div
-      className={`space-y-4 transition-opacity duration-400 ease-out ${
-        visible ? "opacity-100" : "opacity-0"
-      }`}
-    >
-      {/* Answer body — full Markdown rendered immediately */}
+    <div className="answer-enter space-y-4">
+      {/* Answer body */}
       <div className="answer-prose text-sm">
         <ReactMarkdown>{result.answer}</ReactMarkdown>
       </div>
@@ -81,30 +72,35 @@ function InlineAnswer({
         </div>
       )}
 
-      {/* Citations */}
+      {/* Citations — compact source rows */}
       {result.citations.length > 0 && (
         <div className="border-t border-border/30 pt-3 space-y-1.5">
-          <p className="text-[11px] font-medium text-muted/60 uppercase tracking-wider mb-2">
+          <p className="text-[11px] font-medium text-muted/55 uppercase tracking-wider mb-2">
             Sources
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {result.citations.map((c, i) => {
               const domain = hostname(c.url);
               return (
-                <li key={i} className="rounded border border-border/30 bg-surface/20 px-2.5 py-2 space-y-0.5">
+                <li
+                  key={i}
+                  className="group px-2.5 py-1.5 rounded border border-border/15 hover:border-border/40 hover:bg-white/[0.02] transition-all space-y-0.5"
+                >
                   <div className="flex items-start gap-1.5 min-w-0">
                     <a
                       href={c.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[12px] text-accent hover:underline font-medium leading-snug flex-1 min-w-0"
+                      className="text-[12px] text-accent/80 hover:text-accent font-medium leading-snug flex-1 min-w-0 transition-colors"
                     >
                       {c.label}
                     </a>
-                    <span className="text-[10px] text-muted/40 flex-shrink-0 mt-px">{domain}</span>
+                    <span className="text-[10px] text-muted/30 group-hover:text-muted/55 flex-shrink-0 mt-px transition-colors">
+                      {domain}
+                    </span>
                   </div>
                   {c.used_for_claim && (
-                    <p className="text-[11px] text-muted/50 leading-snug">
+                    <p className="text-[11px] text-muted/35 leading-snug">
                       Used for: {c.used_for_claim}
                     </p>
                   )}
@@ -126,9 +122,7 @@ function InlineAnswer({
               type="button"
               onClick={() => setUncertaintyOpen((o) => !o)}
               aria-expanded={uncertaintyOpen}
-              aria-label={
-                uncertaintyOpen ? "Hide uncertainty details" : "Show uncertainty details"
-              }
+              aria-label={uncertaintyOpen ? "Hide uncertainty details" : "Show uncertainty details"}
               className="text-[11px] text-muted/40 hover:text-muted/70 transition-colors flex-shrink-0"
             >
               {uncertaintyOpen ? "Hide" : "Show"}
@@ -142,7 +136,7 @@ function InlineAnswer({
         </div>
       )}
 
-      {/* Follow-ups — clickable */}
+      {/* Follow-ups */}
       {result.suggested_followups.length > 0 && (
         <div className="border-t border-border/30 pt-3 space-y-1.5">
           <p className="text-[11px] text-muted/50 uppercase tracking-wider mb-2">
@@ -194,13 +188,48 @@ export default function AssistantMessageView({
   onFollowUp,
   showRaw,
 }: Props) {
+  // Trace: expanded while running, collapsed to compact summary row after done.
+  // Historical messages (status === "done" on mount) start collapsed.
+  const [traceOpen, setTraceOpen] = useState(message.status === "running");
+
+  // Track whether this message was ever live to avoid auto-scrolling historical loads.
+  const wasRunningRef = useRef(message.status === "running");
+  const scrolledRef = useRef(false);
+  const answerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (message.status === "running") wasRunningRef.current = true;
+  }, [message.status]);
+
+  // Collapse trace once the run completes.
+  useEffect(() => {
+    if (message.status === "done") setTraceOpen(false);
+  }, [message.status]);
+
+  // One-time scroll to answer start. Delayed 320ms to let the trace collapse
+  // animation (280ms) settle before the viewport shifts.
+  useEffect(() => {
+    if (
+      message.status === "done" &&
+      message.result &&
+      wasRunningRef.current &&
+      !scrolledRef.current
+    ) {
+      scrolledRef.current = true;
+      const t = setTimeout(() => {
+        answerRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      }, 320);
+      return () => clearTimeout(t);
+    }
+  }, [message.status, message.result]);
+
   if (message.status === "error") {
     if (message.errorKind === "interrupted") {
       return (
         <div className="w-full rounded-xl px-4 py-3 bg-surface border border-border/50 space-y-0.5">
           <p className="text-xs font-medium text-muted/60">Run interrupted</p>
           <p className="text-xs text-muted/40 leading-relaxed">
-            This run didn't complete. Start a new message to continue.
+            This run didn&apos;t complete. Start a new message to continue.
           </p>
         </div>
       );
@@ -215,20 +244,110 @@ export default function AssistantMessageView({
   const hasTrace = message.traceEvents.length > 0 || message.status === "running";
   const isDone = message.status === "done";
 
+  // Compact summary data
+  const stageCount = new Set(message.traceEvents.map(e => e.stage_id)).size;
+  const citationCount = message.result?.citations.length ?? 0;
+  const sn = message.result?.neutrality;
+  const snChecks = sn
+    ? [
+        sn.avoided_unsolicited_opinion,
+        sn.factually_accurate_and_comprehensive,
+        sn.steelmanned_each_perspective,
+        sn.neutral_terminology_used,
+        sn.equal_depth_across_perspectives,
+        sn.respectful_tone,
+        ...(sn.evidence_proportional_to_sources !== undefined
+          ? [sn.evidence_proportional_to_sources]
+          : []),
+      ]
+    : null;
+  const snPassed = snChecks?.filter(Boolean).length ?? null;
+  const snTotal = snChecks?.length ?? null;
+
   return (
-    <div className="w-full space-y-3">
-      {/* Agent activity — left-rail integrated trace */}
+    <div className="w-full space-y-2">
+      {/* Agent activity trace */}
       {hasTrace && (
-        <TraceCard
-          message={message}
-          selectedStageId={selectedStageId}
-          onSelectStage={onSelectStage}
-        />
+        <div>
+          {isDone ? (
+            // Compact summary toggle + animated full trace below
+            <div>
+              <button
+                type="button"
+                onClick={() => setTraceOpen(o => !o)}
+                className="flex items-center gap-2 w-full text-left text-[11px] text-muted/40 hover:text-muted/65 transition-colors pl-3 border-l-2 border-border/20 hover:border-border/45 py-1 group"
+              >
+                <span className="font-medium">Audit trace</span>
+                {stageCount > 0 && (
+                  <>
+                    <span className="text-muted/25">·</span>
+                    <span>{stageCount} stages</span>
+                  </>
+                )}
+                {snPassed !== null && snTotal !== null && (
+                  <>
+                    <span className="text-muted/25">·</span>
+                    <span>Neutrality {snPassed}/{snTotal}</span>
+                  </>
+                )}
+                {citationCount > 0 && (
+                  <>
+                    <span className="text-muted/25">·</span>
+                    <span>{citationCount} source{citationCount !== 1 ? "s" : ""}</span>
+                  </>
+                )}
+                {/* Rotating chevron */}
+                <svg
+                  className="ml-auto opacity-35 group-hover:opacity-60 flex-shrink-0"
+                  style={{
+                    transform: traceOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 220ms ease",
+                  }}
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                >
+                  <path
+                    d="M3 4.5L6 7.5L9 4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {/* Animated collapse panel — always mounted so inspector interactions survive */}
+              <div
+                className="trace-collapse-panel"
+                data-open={traceOpen ? "true" : "false"}
+              >
+                <div className="trace-collapse-inner">
+                  <div className="pt-2">
+                    <TraceCard
+                      message={message}
+                      selectedStageId={selectedStageId}
+                      onSelectStage={onSelectStage}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Running — always show full live trace
+            <TraceCard
+              message={message}
+              selectedStageId={selectedStageId}
+              onSelectStage={onSelectStage}
+            />
+          )}
+        </div>
       )}
 
-      {/* Final answer — full-width, integrated */}
+      {/* Final answer — centered readable column */}
       {isDone && message.result && (
-        <div className="pt-1">
+        <div ref={answerRef} className="answer-column pt-1">
           <InlineAnswer
             result={message.result}
             showRaw={showRaw}
