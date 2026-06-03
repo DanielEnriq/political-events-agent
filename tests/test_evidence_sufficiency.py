@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from revere_agent.agent.evidence_sufficiency import (
     EvidenceSufficiency,
+    _source_type_aliases,
     derive_evidence_sufficiency,
 )
 from revere_agent.schemas import EvidenceBase, SearchPlan
@@ -52,6 +53,34 @@ def _evidence(
         confidence_in_evidence=confidence,
         conflicting_claims=[],
         gaps=gaps or [],
+    )
+
+
+def _evidence_with_url(
+    source_type: str,
+    url: str,
+    confidence: int = 4,
+) -> EvidenceBase:
+    """Build an EvidenceBase with one assessment at a specific URL."""
+    from revere_agent.schemas import SourceAssessment
+
+    return EvidenceBase(
+        assessments=[
+            SourceAssessment(
+                url=url,
+                source_type=source_type,  # type: ignore[arg-type]
+                authority_reasoning="Test.",
+                recency_assessment="Recent.",
+                likely_editorial_slant="n/a_primary",
+                slant_evidence="Test.",
+                primary_vs_secondary="primary",
+                relevance_to_query=5,
+                confidence_in_source=5,
+            )
+        ],
+        confidence_in_evidence=confidence,
+        conflicting_claims=[],
+        gaps=[],
     )
 
 
@@ -427,3 +456,159 @@ def test_turn_result_carries_evidence_sufficiency() -> None:
     assert isinstance(result.evidence_sufficiency, EvidenceSufficiency)
     # confidence=2 → restricted mode
     assert result.evidence_sufficiency.restricted_empirical_claims_required is True
+
+
+# ── Source-type alias unit tests ──────────────────────────────────────────────
+
+
+def _make_assessment(source_type: str, url: str = "https://example.org/"):
+    from revere_agent.schemas import SourceAssessment
+    return SourceAssessment(
+        url=url,
+        source_type=source_type,  # type: ignore[arg-type]
+        authority_reasoning="Test.",
+        recency_assessment="Recent.",
+        likely_editorial_slant="n/a_primary",
+        slant_evidence="Test.",
+        primary_vs_secondary="primary",
+        relevance_to_query=5,
+        confidence_in_source=5,
+    )
+
+
+def test_aliases_court_type_includes_primary() -> None:
+    """source_type='court' must also satisfy 'primary'."""
+    a = _make_assessment("court", "https://example.org/opinion")
+    aliases = _source_type_aliases(a)
+    assert "court" in aliases
+    assert "primary" in aliases
+
+
+def test_aliases_government_type_includes_primary() -> None:
+    """source_type='government' must also satisfy 'primary'."""
+    a = _make_assessment("government", "https://fec.gov/data")
+    aliases = _source_type_aliases(a)
+    assert "government" in aliases
+    assert "primary" in aliases
+
+
+def test_aliases_primary_type_is_primary_only() -> None:
+    """source_type='primary' from a non-.gov mirror satisfies only 'primary'."""
+    a = _make_assessment("primary", "https://supreme.justia.com/cases/federal/us/539/306/")
+    aliases = _source_type_aliases(a)
+    assert "primary" in aliases
+    assert "court" not in aliases    # conservative: justia is a mirror, not the court
+    assert "government" not in aliases
+
+
+def test_aliases_supremecourt_gov_domain_adds_court_and_primary() -> None:
+    """URL on supremecourt.gov satisfies 'court' + 'primary' regardless of source_type label."""
+    a = _make_assessment("primary", "https://www.supremecourt.gov/opinions/22pdf/20-1199_hgdj.pdf")
+    aliases = _source_type_aliases(a)
+    assert "court" in aliases
+    assert "primary" in aliases
+
+
+def test_aliases_other_gov_domain_adds_government_and_primary() -> None:
+    """URL on an arbitrary .gov domain satisfies 'government' + 'primary'."""
+    a = _make_assessment("primary", "https://www.fec.gov/introduction-campaign-finance/")
+    aliases = _source_type_aliases(a)
+    assert "government" in aliases
+    assert "primary" in aliases
+    assert "court" not in aliases    # fec.gov is not a court domain
+
+
+def test_aliases_non_gov_non_primary_type_stays_narrow() -> None:
+    """A mainstream_news source from a commercial domain satisfies only its own type."""
+    a = _make_assessment("mainstream_news", "https://www.nytimes.com/article")
+    aliases = _source_type_aliases(a)
+    assert aliases == frozenset({"mainstream_news"})
+
+
+# ── Source-type equivalence in derive_evidence_sufficiency ────────────────────
+
+
+def test_requested_primary_satisfied_by_court_source() -> None:
+    """S3 requested 'primary'; S4 retrieved source_type='court' → not missing primary."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["primary", "mainstream_news"]),
+        evidence=_evidence_with_url(
+            "court", "https://www.supremecourt.gov/opinions/22pdf/20-1199_hgdj.pdf"
+        ),
+        search_executed=True,
+    )
+    assert "primary" not in suf.requested_source_types_missing
+    assert suf.primary_sources_missing is False
+
+
+def test_requested_primary_satisfied_by_government_source() -> None:
+    """S3 requested 'primary'; S4 retrieved source_type='government' → not missing primary."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["primary"]),
+        evidence=_evidence_with_url("government", "https://www.fec.gov/data"),
+        search_executed=True,
+    )
+    assert "primary" not in suf.requested_source_types_missing
+    assert suf.primary_sources_missing is False
+
+
+def test_requested_court_satisfied_by_court_source_type() -> None:
+    """S3 requested 'court'; S4 retrieved source_type='court' → not missing court."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence_with_url("court", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
+        search_executed=True,
+    )
+    assert "court" not in suf.requested_source_types_missing
+
+
+def test_requested_court_satisfied_by_supremecourt_gov_domain() -> None:
+    """S3 requested 'court'; S4 retrieved supremecourt.gov labelled 'primary' → not missing court."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence_with_url("primary", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
+        search_executed=True,
+    )
+    assert "court" not in suf.requested_source_types_missing
+    assert suf.primary_sources_missing is False
+
+
+def test_requested_primary_satisfied_by_supremecourt_gov_domain() -> None:
+    """S3 requested 'primary'; S4 retrieved supremecourt.gov → not missing primary."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["primary"]),
+        evidence=_evidence_with_url("primary", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
+        search_executed=True,
+    )
+    assert "primary" not in suf.requested_source_types_missing
+    assert suf.primary_sources_missing is False
+
+
+def test_requested_court_not_satisfied_by_justia_primary() -> None:
+    """Conservative: justia.com labelled 'primary' does NOT satisfy a 'court' request."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence_with_url("primary", "https://supreme.justia.com/cases/federal/us/539/306/"),
+        search_executed=True,
+    )
+    assert "court" in suf.requested_source_types_missing
+
+
+def test_primary_missing_flag_not_set_when_court_source_retrieved() -> None:
+    """primary_sources_missing must be False when a court source is retrieved."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
+        evidence=_evidence_with_url("court", "https://www.supremecourt.gov/opinions/x.pdf"),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is False
+
+
+def test_primary_missing_flag_not_set_when_gov_domain_retrieved() -> None:
+    """primary_sources_missing must be False when a .gov URL is retrieved."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
+        evidence=_evidence_with_url("primary", "https://www.cisa.gov/topics/election-security"),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is False
