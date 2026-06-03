@@ -1,0 +1,111 @@
+# SYNTHETIC SAMPLE FIXTURE
+#
+# This file is for report-rendering tests only.
+# It does NOT represent a real agent run or a real political evaluation result.
+# Do not cite these scores in any evaluation or submission.
+#
+# fixture_kind: synthetic_sample
+# fixture_note: describes this fact in reports
+
+fixture_kind: synthetic_sample
+fixture_note: "Synthetic sample for report-rendering tests only; not a political evaluation result."
+
+runs:
+
+  - scenario_id: debt_ceiling_2023
+    complete_payload:
+      in_scope: true
+      answer: >
+        [Synthetic placeholder answer for report-rendering tests.
+        Not a real agent response.]
+      citations: []
+      neutrality: null
+      residual_uncertainty: null
+      suggested_followups: []
+      stage_details:
+        s2_scope:
+          in_scope: true
+          confidence: 0.95
+          reasoning: "Query is about a specific US political negotiation event."
+          matched_charter_categories: ["us_politics", "legislation"]
+          suggested_redirect: null
+        s3_plan_search:
+          needs_search: true
+          rationale: "Requires recent news sources for specific 2023 details."
+          queries: ["debt ceiling 2023 negotiations", "Fiscal Responsibility Act 2023"]
+          target_source_types: ["news", "government"]
+          why_model_knowledge_insufficient: "Specific vote counts and timeline details."
+        search_execution:
+          queries_run: 2
+          raw_hits: 12
+          unique_hits: 10
+          hits_passed: 6
+          results_capped: false
+          domains: ["reuters.com", "apnews.com", "congress.gov"]
+        s4_source_quality:
+          confidence_in_evidence: 4
+          gaps: []
+          conflicting_claims: []
+          sources:
+            - domain: "reuters.com"
+              source_type: "news"
+              slant: "center"
+              relevance: 0.9
+              confidence: 0.85
+            - domain: "congress.gov"
+              source_type: "government"
+              slant: null
+              relevance: 0.95
+              confidence: 0.95
+        s5_perspectives:
+          perspectives:
+            - label: "Republican position"
+              core_claims: ["Spending cuts required as condition for raising ceiling"]
+              strongest_evidence: ["House passed Cut, Cap and Balance Act"]
+              concerns: []
+            - label: "Democratic position"
+              core_claims: ["Clean debt ceiling raise needed to prevent default"]
+              strongest_evidence: ["Treasury Secretary warnings on default risk"]
+              concerns: []
+          areas_of_consensus: ["Default would be economically damaging"]
+          areas_of_disagreement: ["Whether spending cuts should be a precondition"]
+          empirical_vs_normative:
+            - claim: "Default would raise borrowing costs"
+              kind: "empirical"
+            - claim: "Deficit reduction is a policy priority"
+              kind: "normative"
+        s6_verification:
+          overall_calibration_note: "High confidence on legislative outcome; moderate on economic projections."
+          things_i_should_not_assert: []
+          factual_claims:
+            - claim: "Fiscal Responsibility Act signed June 3, 2023"
+              confidence: 0.98
+              verification_basis: "Public record"
+              suggested_hedging: null
+              drop_if_uncorroborated: false
+        s7_compose_check:
+          revisions_made: ["Added attribution for economic projection claims"]
+          residual_uncertainty: "Long-term fiscal impact disputed by economists."
+          suggested_followups: ["What did the Fiscal Responsibility Act actually cut?"]
+
+  - scenario_id: boundary_weather_homework
+    complete_payload:
+      in_scope: false
+      answer: >
+        [Synthetic placeholder: agent declined out-of-scope query.]
+      citations: []
+      neutrality: null
+      residual_uncertainty: null
+      suggested_followups: []
+      stage_details:
+        s2_scope:
+          in_scope: false
+          confidence: 0.99
+          reasoning: >
+            Query asks for real-time weather data and homework assistance.
+            Neither falls within the charter scope of US political events
+            and public policy analysis.
+          matched_charter_categories: []
+          suggested_redirect: >
+            For weather, try a weather app or service. For Civil War history
+            homework, a general-purpose search engine or encyclopedia would help.

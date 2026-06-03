@@ -135,6 +135,7 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
     if evidence:
         assessments = list(getattr(evidence, "assessments", None) or [])
         suf = getattr(result, "evidence_sufficiency", None)
+        cov = getattr(evidence, "coverage", None)
         details["s4_source_quality"] = {
             "confidence_in_evidence": getattr(evidence, "confidence_in_evidence", None),
             "gaps": list(getattr(evidence, "gaps", None) or []),
@@ -149,6 +150,13 @@ def _build_stage_details(result: Any) -> dict[str, Any]:
                 }
                 for a in assessments
             ],
+            "coverage": {
+                "has_primary_sources": getattr(cov, "has_primary_sources", None),
+                "has_court_sources": getattr(cov, "has_court_sources", None),
+                "has_government_sources": getattr(cov, "has_government_sources", None),
+                "perspective_coverage_asymmetric": getattr(cov, "perspective_coverage_asymmetric", None),
+                "asymmetry_note": getattr(cov, "asymmetry_note", None),
+            } if cov is not None else None,
             "sufficiency": {
                 "restricted_empirical_claims_required": getattr(suf, "restricted_empirical_claims_required", False),
                 "primary_sources_missing": getattr(suf, "primary_sources_missing", False),
@@ -481,6 +489,7 @@ def _build_stage_detail_from_output(
         if not o:
             return None
         assessments = o.get("assessments") or []
+        cov = o.get("coverage")
         return {
             "confidence_in_evidence": o.get("confidence_in_evidence"),
             "gaps": o.get("gaps") or [],
@@ -495,6 +504,13 @@ def _build_stage_detail_from_output(
                 }
                 for a in assessments
             ],
+            "coverage": {
+                "has_primary_sources": cov.get("has_primary_sources"),
+                "has_court_sources": cov.get("has_court_sources"),
+                "has_government_sources": cov.get("has_government_sources"),
+                "perspective_coverage_asymmetric": cov.get("perspective_coverage_asymmetric"),
+                "asymmetry_note": cov.get("asymmetry_note"),
+            } if cov else None,
         }
 
     if stage_id == "s5_perspectives":

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from revere_agent.agent.evidence_sufficiency import (
     EvidenceSufficiency,
-    _source_type_aliases,
     derive_evidence_sufficiency,
 )
-from revere_agent.schemas import EvidenceBase, SearchPlan
+from revere_agent.schemas import EvidenceBase, EvidenceCoverage, SearchPlan
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,10 +25,27 @@ def _plan(
     )
 
 
+def _coverage(
+    has_primary: bool = False,
+    has_court: bool = False,
+    has_government: bool = False,
+    asymmetric: bool = False,
+    asymmetry_note: str | None = None,
+) -> EvidenceCoverage:
+    return EvidenceCoverage(
+        has_primary_sources=has_primary,
+        has_court_sources=has_court,
+        has_government_sources=has_government,
+        perspective_coverage_asymmetric=asymmetric,
+        asymmetry_note=asymmetry_note,
+    )
+
+
 def _evidence(
     confidence: int = 4,
     gaps: list[str] | None = None,
     source_types: list[str] | None = None,
+    coverage: EvidenceCoverage | None = None,
 ) -> EvidenceBase:
     from revere_agent.schemas import SourceAssessment
 
@@ -53,38 +69,11 @@ def _evidence(
         confidence_in_evidence=confidence,
         conflicting_claims=[],
         gaps=gaps or [],
+        coverage=coverage,
     )
 
 
-def _evidence_with_url(
-    source_type: str,
-    url: str,
-    confidence: int = 4,
-) -> EvidenceBase:
-    """Build an EvidenceBase with one assessment at a specific URL."""
-    from revere_agent.schemas import SourceAssessment
-
-    return EvidenceBase(
-        assessments=[
-            SourceAssessment(
-                url=url,
-                source_type=source_type,  # type: ignore[arg-type]
-                authority_reasoning="Test.",
-                recency_assessment="Recent.",
-                likely_editorial_slant="n/a_primary",
-                slant_evidence="Test.",
-                primary_vs_secondary="primary",
-                relevance_to_query=5,
-                confidence_in_source=5,
-            )
-        ],
-        confidence_in_evidence=confidence,
-        conflicting_claims=[],
-        gaps=[],
-    )
-
-
-# ── Unit tests: derivation logic ──────────────────────────────────────────────
+# ── Unit tests: Flag 1 — confidence threshold ─────────────────────────────────
 
 
 def test_restricted_when_low_confidence() -> None:
@@ -101,7 +90,7 @@ def test_restricted_when_low_confidence() -> None:
 def test_unrestricted_when_clean_evidence() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=False),
-        evidence=_evidence(confidence=4),
+        evidence=_evidence(confidence=4, coverage=_coverage()),
         search_executed=False,
     )
     assert suf.restricted_empirical_claims_required is False
@@ -112,10 +101,17 @@ def test_unrestricted_when_clean_evidence() -> None:
     assert suf.as_prompt_note() is None
 
 
-def test_primary_missing_when_search_executed_and_no_primary() -> None:
+# ── Unit tests: Flag 2 — primary sources missing (structured path) ────────────
+
+
+def test_primary_missing_when_search_executed_and_coverage_says_no_primary() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=True, target_types=["mainstream_news"]),
-        evidence=_evidence(confidence=4, source_types=["mainstream_news"]),
+        evidence=_evidence(
+            confidence=4,
+            source_types=["mainstream_news"],
+            coverage=_coverage(has_primary=False),
+        ),
         search_executed=True,
     )
     assert suf.primary_sources_missing is True
@@ -123,28 +119,117 @@ def test_primary_missing_when_search_executed_and_no_primary() -> None:
     assert any("primary" in r.lower() for r in suf.reasons)
 
 
-def test_no_primary_missing_when_search_not_executed() -> None:
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=False),
-        evidence=_evidence(confidence=4, source_types=[]),
-        search_executed=False,
-    )
-    assert suf.primary_sources_missing is False
-
-
-def test_primary_not_missing_when_government_retrieved() -> None:
+def test_primary_not_missing_when_coverage_says_has_primary() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=True, target_types=["government"]),
-        evidence=_evidence(confidence=4, source_types=["government"]),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(has_primary=True, has_government=True),
+        ),
         search_executed=True,
     )
     assert suf.primary_sources_missing is False
 
 
-def test_requested_source_types_missing() -> None:
+def test_primary_not_missing_when_coverage_says_has_court() -> None:
+    """Court sources satisfy primary-source presence check."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(has_primary=True, has_court=True),
+        ),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is False
+
+
+def test_no_primary_missing_check_when_search_not_executed() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=False),
+        evidence=_evidence(confidence=4, coverage=_coverage(has_primary=False)),
+        search_executed=False,
+    )
+    assert suf.primary_sources_missing is False
+
+
+# ── Unit tests: Flag 3 — missing requested source types (structured path) ─────
+
+
+def test_requested_primary_missing_when_coverage_says_no_primary() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["primary"]),
+        evidence=_evidence(confidence=4, coverage=_coverage(has_primary=False)),
+        search_executed=True,
+    )
+    assert "primary" in suf.requested_source_types_missing
+    assert suf.restricted_empirical_claims_required is True
+
+
+def test_requested_court_missing_when_coverage_says_no_court() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence(confidence=4, coverage=_coverage(has_court=False)),
+        search_executed=True,
+    )
+    assert "court" in suf.requested_source_types_missing
+
+
+def test_requested_government_missing_when_coverage_says_no_government() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["government"]),
+        evidence=_evidence(confidence=4, coverage=_coverage(has_government=False)),
+        search_executed=True,
+    )
+    assert "government" in suf.requested_source_types_missing
+
+
+def test_requested_primary_satisfied_when_coverage_says_has_primary() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["primary", "mainstream_news"]),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(has_primary=True),
+        ),
+        search_executed=True,
+    )
+    assert "primary" not in suf.requested_source_types_missing
+    assert suf.primary_sources_missing is False
+
+
+def test_requested_court_satisfied_when_coverage_says_has_court() -> None:
+    """S3 requested 'court'; coverage.has_court_sources=True → not missing."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(has_primary=True, has_court=True),
+        ),
+        search_executed=True,
+    )
+    assert "court" not in suf.requested_source_types_missing
+
+
+def test_requested_government_satisfied_when_coverage_says_has_government() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["government"]),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(has_primary=True, has_government=True),
+        ),
+        search_executed=True,
+    )
+    assert "government" not in suf.requested_source_types_missing
+
+
+def test_multiple_requested_types_partial_missing() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=True, target_types=["government", "court", "mainstream_news"]),
-        evidence=_evidence(confidence=4, source_types=["mainstream_news"]),
+        evidence=_evidence(
+            confidence=4,
+            source_types=["mainstream_news"],
+            coverage=_coverage(has_primary=False, has_court=False, has_government=False),
+        ),
         search_executed=True,
     )
     assert "government" in suf.requested_source_types_missing
@@ -153,41 +238,113 @@ def test_requested_source_types_missing() -> None:
     assert suf.restricted_empirical_claims_required is True
 
 
-def test_perspective_asymmetry_detected_from_gap_text() -> None:
+# ── Unit tests: Flag 4 — asymmetric coverage (structured path) ───────────────
+
+
+def test_asymmetry_detected_from_structured_coverage_flag() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=False),
         evidence=_evidence(
             confidence=4,
-            gaps=["Coverage gap: no perspective-representative sources found."],
+            coverage=_coverage(
+                asymmetric=True,
+                asymmetry_note="Sources favour the enforcement-first perspective.",
+            ),
         ),
         search_executed=False,
     )
     assert suf.perspective_coverage_asymmetric is True
     assert suf.has_constraints is True
+    assert any("enforcement-first" in r for r in suf.reasons)
 
 
-def test_asymmetry_detected_from_one_sided_gap() -> None:
+def test_no_asymmetry_when_coverage_flag_is_false() -> None:
     suf = derive_evidence_sufficiency(
         plan=_plan(needs_search=False),
         evidence=_evidence(
             confidence=4,
-            gaps=["Sources are one-sided; only mainstream media retrieved."],
-        ),
-        search_executed=False,
-    )
-    assert suf.perspective_coverage_asymmetric is True
-
-
-def test_no_asymmetry_on_unrelated_gaps() -> None:
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=False),
-        evidence=_evidence(
-            confidence=4,
-            gaps=["No data on exact vote counts."],
+            coverage=_coverage(asymmetric=False),
         ),
         search_executed=False,
     )
     assert suf.perspective_coverage_asymmetric is False
+
+
+def test_asymmetry_reason_uses_generic_note_when_asymmetry_note_absent() -> None:
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=False),
+        evidence=_evidence(
+            confidence=4,
+            coverage=_coverage(asymmetric=True, asymmetry_note=None),
+        ),
+        search_executed=False,
+    )
+    assert suf.perspective_coverage_asymmetric is True
+    assert any("asymmetric" in r.lower() for r in suf.reasons)
+
+
+# ── Unit tests: fallback path (coverage=None) ─────────────────────────────────
+
+
+def test_fallback_primary_missing_uses_source_type_comparison() -> None:
+    """When coverage is None, Flag 2 uses source_type enum comparison (no domain expansion)."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
+        evidence=_evidence(confidence=4, source_types=["mainstream_news"]),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is True
+
+
+def test_fallback_primary_not_missing_when_court_type_retrieved() -> None:
+    """Fallback: source_type='court' satisfies primary-class check."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
+        evidence=_evidence(confidence=4, source_types=["court"]),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is False
+
+
+def test_fallback_primary_not_missing_when_government_type_retrieved() -> None:
+    """Fallback: source_type='government' satisfies primary-class check."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True),
+        evidence=_evidence(confidence=4, source_types=["government"]),
+        search_executed=True,
+    )
+    assert suf.primary_sources_missing is False
+
+
+def test_fallback_no_asymmetry_detection() -> None:
+    """Fallback (coverage=None) does not detect asymmetry — skip, not misfire."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=False),
+        evidence=_evidence(confidence=4, gaps=["Sources are one-sided."]),
+        search_executed=False,
+    )
+    assert suf.perspective_coverage_asymmetric is False
+
+
+def test_fallback_missing_requested_types_exact_match() -> None:
+    """Fallback uses exact source_type match for requested primary-class types."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["government", "court"]),
+        evidence=_evidence(confidence=4, source_types=["mainstream_news"]),
+        search_executed=True,
+    )
+    assert "government" in suf.requested_source_types_missing
+    assert "court" in suf.requested_source_types_missing
+
+
+def test_fallback_requested_court_satisfied_when_court_type_retrieved() -> None:
+    """Fallback: exact source_type='court' satisfies requested 'court'."""
+    suf = derive_evidence_sufficiency(
+        plan=_plan(needs_search=True, target_types=["court"]),
+        evidence=_evidence(confidence=4, source_types=["court"]),
+        search_executed=True,
+    )
+    assert "court" not in suf.requested_source_types_missing
 
 
 # ── Prompt note format ────────────────────────────────────────────────────────
@@ -319,7 +476,7 @@ def test_no_note_injected_into_s5_when_clean(monkeypatch) -> None:
         canonical_query="Test?", modality="factual", user_stated_stance=None,
         multi_turn_dependency=False, notes="Test.",
     )
-    evidence = _evidence(confidence=4)
+    evidence = _evidence(confidence=4, coverage=_coverage())
     suf = derive_evidence_sufficiency(_plan(needs_search=False), evidence, False)
     assert suf.has_constraints is False
 
@@ -458,157 +615,39 @@ def test_turn_result_carries_evidence_sufficiency() -> None:
     assert result.evidence_sufficiency.restricted_empirical_claims_required is True
 
 
-# ── Source-type alias unit tests ──────────────────────────────────────────────
+# ── EvidenceCoverage schema ───────────────────────────────────────────────────
 
 
-def _make_assessment(source_type: str, url: str = "https://example.org/"):
-    from revere_agent.schemas import SourceAssessment
-    return SourceAssessment(
-        url=url,
-        source_type=source_type,  # type: ignore[arg-type]
-        authority_reasoning="Test.",
-        recency_assessment="Recent.",
-        likely_editorial_slant="n/a_primary",
-        slant_evidence="Test.",
-        primary_vs_secondary="primary",
-        relevance_to_query=5,
-        confidence_in_source=5,
+def test_evidence_coverage_roundtrips_via_pydantic() -> None:
+    """EvidenceCoverage is a valid Pydantic model that serialises cleanly."""
+    cov = EvidenceCoverage(
+        has_primary_sources=True,
+        has_court_sources=True,
+        has_government_sources=False,
+        perspective_coverage_asymmetric=False,
     )
+    dumped = cov.model_dump()
+    assert dumped["has_primary_sources"] is True
+    assert dumped["has_court_sources"] is True
+    assert dumped["has_government_sources"] is False
+    assert dumped["perspective_coverage_asymmetric"] is False
+    assert dumped["asymmetry_note"] is None
 
 
-def test_aliases_court_type_includes_primary() -> None:
-    """source_type='court' must also satisfy 'primary'."""
-    a = _make_assessment("court", "https://example.org/opinion")
-    aliases = _source_type_aliases(a)
-    assert "court" in aliases
-    assert "primary" in aliases
-
-
-def test_aliases_government_type_includes_primary() -> None:
-    """source_type='government' must also satisfy 'primary'."""
-    a = _make_assessment("government", "https://fec.gov/data")
-    aliases = _source_type_aliases(a)
-    assert "government" in aliases
-    assert "primary" in aliases
-
-
-def test_aliases_primary_type_is_primary_only() -> None:
-    """source_type='primary' from a non-.gov mirror satisfies only 'primary'."""
-    a = _make_assessment("primary", "https://supreme.justia.com/cases/federal/us/539/306/")
-    aliases = _source_type_aliases(a)
-    assert "primary" in aliases
-    assert "court" not in aliases    # conservative: justia is a mirror, not the court
-    assert "government" not in aliases
-
-
-def test_aliases_supremecourt_gov_domain_adds_court_and_primary() -> None:
-    """URL on supremecourt.gov satisfies 'court' + 'primary' regardless of source_type label."""
-    a = _make_assessment("primary", "https://www.supremecourt.gov/opinions/22pdf/20-1199_hgdj.pdf")
-    aliases = _source_type_aliases(a)
-    assert "court" in aliases
-    assert "primary" in aliases
-
-
-def test_aliases_other_gov_domain_adds_government_and_primary() -> None:
-    """URL on an arbitrary .gov domain satisfies 'government' + 'primary'."""
-    a = _make_assessment("primary", "https://www.fec.gov/introduction-campaign-finance/")
-    aliases = _source_type_aliases(a)
-    assert "government" in aliases
-    assert "primary" in aliases
-    assert "court" not in aliases    # fec.gov is not a court domain
-
-
-def test_aliases_non_gov_non_primary_type_stays_narrow() -> None:
-    """A mainstream_news source from a commercial domain satisfies only its own type."""
-    a = _make_assessment("mainstream_news", "https://www.nytimes.com/article")
-    aliases = _source_type_aliases(a)
-    assert aliases == frozenset({"mainstream_news"})
-
-
-# ── Source-type equivalence in derive_evidence_sufficiency ────────────────────
-
-
-def test_requested_primary_satisfied_by_court_source() -> None:
-    """S3 requested 'primary'; S4 retrieved source_type='court' → not missing primary."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["primary", "mainstream_news"]),
-        evidence=_evidence_with_url(
-            "court", "https://www.supremecourt.gov/opinions/22pdf/20-1199_hgdj.pdf"
-        ),
-        search_executed=True,
+def test_evidence_base_coverage_field_defaults_to_none() -> None:
+    """EvidenceBase.coverage is optional and defaults to None for backward compat."""
+    eb = EvidenceBase(
+        assessments=[],
+        confidence_in_evidence=3,
+        conflicting_claims=[],
+        gaps=["No sources retrieved."],
     )
-    assert "primary" not in suf.requested_source_types_missing
-    assert suf.primary_sources_missing is False
+    assert eb.coverage is None
 
 
-def test_requested_primary_satisfied_by_government_source() -> None:
-    """S3 requested 'primary'; S4 retrieved source_type='government' → not missing primary."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["primary"]),
-        evidence=_evidence_with_url("government", "https://www.fec.gov/data"),
-        search_executed=True,
-    )
-    assert "primary" not in suf.requested_source_types_missing
-    assert suf.primary_sources_missing is False
-
-
-def test_requested_court_satisfied_by_court_source_type() -> None:
-    """S3 requested 'court'; S4 retrieved source_type='court' → not missing court."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["court"]),
-        evidence=_evidence_with_url("court", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
-        search_executed=True,
-    )
-    assert "court" not in suf.requested_source_types_missing
-
-
-def test_requested_court_satisfied_by_supremecourt_gov_domain() -> None:
-    """S3 requested 'court'; S4 retrieved supremecourt.gov labelled 'primary' → not missing court."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["court"]),
-        evidence=_evidence_with_url("primary", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
-        search_executed=True,
-    )
-    assert "court" not in suf.requested_source_types_missing
-    assert suf.primary_sources_missing is False
-
-
-def test_requested_primary_satisfied_by_supremecourt_gov_domain() -> None:
-    """S3 requested 'primary'; S4 retrieved supremecourt.gov → not missing primary."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["primary"]),
-        evidence=_evidence_with_url("primary", "https://www.supremecourt.gov/opinions/22pdf/x.pdf"),
-        search_executed=True,
-    )
-    assert "primary" not in suf.requested_source_types_missing
-    assert suf.primary_sources_missing is False
-
-
-def test_requested_court_not_satisfied_by_justia_primary() -> None:
-    """Conservative: justia.com labelled 'primary' does NOT satisfy a 'court' request."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["court"]),
-        evidence=_evidence_with_url("primary", "https://supreme.justia.com/cases/federal/us/539/306/"),
-        search_executed=True,
-    )
-    assert "court" in suf.requested_source_types_missing
-
-
-def test_primary_missing_flag_not_set_when_court_source_retrieved() -> None:
-    """primary_sources_missing must be False when a court source is retrieved."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
-        evidence=_evidence_with_url("court", "https://www.supremecourt.gov/opinions/x.pdf"),
-        search_executed=True,
-    )
-    assert suf.primary_sources_missing is False
-
-
-def test_primary_missing_flag_not_set_when_gov_domain_retrieved() -> None:
-    """primary_sources_missing must be False when a .gov URL is retrieved."""
-    suf = derive_evidence_sufficiency(
-        plan=_plan(needs_search=True, target_types=["mainstream_news"]),
-        evidence=_evidence_with_url("primary", "https://www.cisa.gov/topics/election-security"),
-        search_executed=True,
-    )
-    assert suf.primary_sources_missing is False
+def test_evidence_base_accepts_coverage_when_provided() -> None:
+    cov = _coverage(has_primary=True, has_court=True, asymmetric=False)
+    eb = _evidence(confidence=4, coverage=cov)
+    assert eb.coverage is not None
+    assert eb.coverage.has_primary_sources is True
+    assert eb.coverage.has_court_sources is True

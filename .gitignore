@@ -23,3 +23,10 @@ debug_*.txt
 web/node_modules/
 web/.next/
 web/out/
+
+# Private demo scripts
+docs/script/
+
+# Eval reports (generated output; not for source control)
+evals/reports/*.md
+evals/reports/*.json

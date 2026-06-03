@@ -4,78 +4,31 @@ Derived from S3 plan + S4 evidence + search execution stats.
 No LLM call, no search call. Passed into S5/S6/S7 as a compact binding note
 so they can apply evidence-proportional wording without re-reading the full
 evidence base.
+
+Design principle:
+  Deterministic code performs bookkeeping only — it reads typed fields,
+  compares enum values, and propagates structured booleans. All semantic
+  judgments (does this source qualify as primary? is coverage asymmetric?)
+  are made by S4 and emitted as structured EvidenceCoverage fields.
+
+When evidence.coverage is None (legacy sessions or schema migration in flight),
+a degraded fallback runs: Flag 1 unchanged, Flags 2–3 use simple source_type
+comparison, Flag 4 is skipped. This fallback contains no domain heuristics or
+gap-text keyword scanning.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
 
 if TYPE_CHECKING:
-    from revere_agent.schemas import EvidenceBase, SearchPlan, SourceAssessment
+    from revere_agent.schemas import EvidenceBase, SearchPlan
 
-# Source types that qualify as "primary" for gap detection.
+# Enum values that qualify as "primary-class" sources for the fallback path.
+# Used only when evidence.coverage is None. No domain expansion — typed field
+# comparison only.
 _PRIMARY_TYPES: frozenset[str] = frozenset({"primary", "government", "court"})
-
-# Domains that identify a court source regardless of the source_type label S4
-# assigned. Handles cases where S4 labels supremecourt.gov as "primary" rather
-# than "court".
-_COURT_DOMAINS: frozenset[str] = frozenset({
-    "supremecourt.gov",
-    "scotus.gov",
-    "uscourts.gov",
-})
-
-
-def _source_type_aliases(assessment: "SourceAssessment") -> frozenset[str]:
-    """Return all source-type roles this assessment satisfies.
-
-    Conservative equivalence rules:
-    - 'court' and 'government' are inherently primary records → both also
-      satisfy a request for 'primary'.
-    - A URL on a recognised court domain satisfies 'court' + 'primary'
-      regardless of the source_type label (handles S4 labelling
-      supremecourt.gov as 'primary' rather than 'court').
-    - Any other .gov domain satisfies 'government' + 'primary'.
-    - Mirror / aggregator sites (justia.com, law.cornell.edu) are NOT treated
-      as court-equivalent; they satisfy only their assigned source_type.
-    """
-    aliases: set[str] = {assessment.source_type}
-
-    # Type-based expansions: court and government records are primary by nature.
-    if assessment.source_type in ("court", "government"):
-        aliases.add("primary")
-
-    # Domain-based expansions — catch mislabelled authority sources.
-    try:
-        netloc = urlparse(assessment.url).netloc.lower().removeprefix("www.")
-    except Exception:  # noqa: BLE001
-        netloc = ""
-
-    if netloc:
-        if any(netloc == d or netloc.endswith("." + d) for d in _COURT_DOMAINS):
-            # Recognised federal court domain → satisfies court + primary.
-            aliases.update({"court", "primary"})
-        elif netloc.endswith(".gov"):
-            # Any other .gov TLD → satisfies government + primary.
-            aliases.update({"government", "primary"})
-
-    return frozenset(aliases)
-
-# Structural terms in S4 gap text that indicate asymmetric perspective coverage.
-# These are structural descriptors S4 uses, not political topic keywords.
-_ASYMMETRY_TERMS: tuple[str, ...] = (
-    "one-sided",
-    "one side",
-    "asymmetric",
-    "perspective-representative",
-    "missing perspective",
-    "underrepresented perspective",
-    "coverage gap",
-    "sources for one",
-    "sources only for",
-)
 
 
 @dataclass
@@ -140,24 +93,33 @@ def derive_evidence_sufficiency(
     evidence: "EvidenceBase",
     search_executed: bool,
 ) -> EvidenceSufficiency:
-    """Derive an EvidenceSufficiency from S3 plan + S4 evidence. Zero LLM calls."""
+    """Derive an EvidenceSufficiency from S3 plan + S4 evidence. Zero LLM calls.
+
+    When evidence.coverage is populated (the normal path), all semantic judgments
+    are read directly from S4-emitted structured booleans. When coverage is None
+    (legacy fallback), a simplified path runs with no domain heuristics.
+    """
     reasons: list[str] = []
     conf = evidence.confidence_in_evidence
+    cov = evidence.coverage
 
-    # Flag 1: restricted mode from low confidence
+    # ── Flag 1: restricted mode from low confidence ───────────────────────────
+    # Bookkeeping: numerical comparison on a typed int field.
     restricted = conf <= 3
     if restricted:
         reasons.append(f"Evidence confidence {conf}/5 is low")
 
-    # Flag 2: primary sources missing when search ran.
-    # Uses alias expansion so a court/gov URL satisfies "primary" even if S4
-    # labelled it with an adjacent type (e.g. supremecourt.gov as "primary").
+    # ── Flag 2: primary sources missing when search ran ───────────────────────
     primary_missing = False
     if search_executed:
-        primary_present = any(
-            bool(_PRIMARY_TYPES & _source_type_aliases(a))
-            for a in evidence.assessments
-        )
+        if cov is not None:
+            # Structured path: read S4's judgment directly.
+            primary_present = cov.has_primary_sources
+        else:
+            # Fallback: compare source_type enum values; no domain expansion.
+            primary_present = any(
+                a.source_type in _PRIMARY_TYPES for a in evidence.assessments
+            )
         if not primary_present:
             primary_missing = True
             restricted = True
@@ -165,29 +127,43 @@ def derive_evidence_sufficiency(
                 "No primary/government/court sources retrieved despite search execution"
             )
 
-    # Flag 3: requested source types (S3 target_source_types) not found in S4.
-    # Uses alias expansion to avoid false positives from equivalent types:
-    # - requested "primary", retrieved "court" → satisfied (court is primary)
-    # - requested "primary", retrieved "government" → satisfied
-    # - requested "court", domain is supremecourt.gov → satisfied regardless of label
+    # ── Flag 3: requested source types not satisfied ──────────────────────────
+    # S3 names target source types; we check whether S4 found them.
+    # Structured path reads S4's coverage booleans directly.
+    # Fallback uses exact source_type enum comparison only.
     missing_types: list[str] = []
-    for stype in plan.target_source_types:
-        if stype in _PRIMARY_TYPES:
-            satisfied = any(stype in _source_type_aliases(a) for a in evidence.assessments)
-            if not satisfied:
+    if cov is not None:
+        _coverage_by_type: dict[str, bool] = {
+            "primary": cov.has_primary_sources,
+            "government": cov.has_government_sources,
+            "court": cov.has_court_sources,
+        }
+        for stype in plan.target_source_types:
+            if stype in _coverage_by_type and not _coverage_by_type[stype]:
                 missing_types.append(stype)
+    else:
+        # Fallback: exact type match, no equivalence expansion.
+        retrieved_types = {a.source_type for a in evidence.assessments}
+        for stype in plan.target_source_types:
+            if stype in _PRIMARY_TYPES and stype not in retrieved_types:
+                missing_types.append(stype)
+
     if missing_types:
         restricted = True
         reasons.append(
             f"S3 requested {', '.join(missing_types)} sources but none retrieved"
         )
 
-    # Flag 4: asymmetric coverage from S4 gap text
+    # ── Flag 4: asymmetric perspective coverage ───────────────────────────────
+    # Structured path: read S4's judgment directly (no gap-text scanning).
+    # Fallback: skip — cannot determine asymmetry without either structured field
+    # or semantic text interpretation.
     asymmetric = False
-    gap_text_lower = " ".join(evidence.gaps).lower()
-    if any(term in gap_text_lower for term in _ASYMMETRY_TERMS):
-        asymmetric = True
-        reasons.append("Evidence gaps indicate asymmetric perspective coverage")
+    if cov is not None:
+        asymmetric = cov.perspective_coverage_asymmetric
+        if asymmetric:
+            note = cov.asymmetry_note or "Evidence gaps indicate asymmetric perspective coverage"
+            reasons.append(note)
 
     return EvidenceSufficiency(
         primary_sources_missing=primary_missing,

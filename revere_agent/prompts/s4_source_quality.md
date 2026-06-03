@@ -72,6 +72,26 @@ gets its own reasoning, not just a label:
   precise: not "they disagree about the deal" but "Source A says the IRS
   rescission was $1.4B; Source B says $20B."
 - **gaps** — what we still don't know after retrieval. Be specific.
+- **coverage** — a structured `EvidenceCoverage` object. Populate it based
+  on your assessment of the retrieved sources:
+
+  - `has_primary_sources` — True if any retrieved source is a primary
+    document, government publication, or court record (i.e., any source
+    you classified as `primary`, `government`, or `court`).
+  - `has_court_sources` — True if any retrieved source is a court opinion,
+    filing, or official court document (source_type `court`, or a domain
+    like supremecourt.gov, uscourts.gov).
+  - `has_government_sources` — True if any retrieved source is an official
+    government publication or agency page (source_type `government`, or any
+    `.gov` domain).
+  - `perspective_coverage_asymmetric` — True if the retrieved sources
+    clearly favour one side of the political debate — i.e., one
+    perspective has substantial source support while another lacks
+    retrieved evidence. This is about the balance of the evidence base,
+    not about the slant of individual sources.
+  - `asymmetry_note` — (optional) a brief phrase describing which side or
+    perspective lacks retrieved source support. Populate only when
+    `perspective_coverage_asymmetric` is True.
 
 ## Case B: no search was performed
 
@@ -86,6 +106,9 @@ Produce an `EvidenceBase` that documents the limitation explicitly:
     out of date on events after the cutoff."
   - "No primary sources were verified; specific figures, vote counts, and
     quotes have not been confirmed."
+- `coverage` — set all booleans to False (no sources were retrieved):
+  `has_primary_sources=False`, `has_court_sources=False`,
+  `has_government_sources=False`, `perspective_coverage_asymmetric=False`.
 
 This makes the model-knowledge limitation legible in the trace.
 

@@ -8,6 +8,7 @@ from .search import ExtractedDoc, SearchHit, SearchPlan, SourceType
 from .source_quality import (
     EditorialSlant,
     EvidenceBase,
+    EvidenceCoverage,
     PrimacyTier,
     SourceAssessment,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "Citation",
     "EditorialSlant",
     "EvidenceBase",
+    "EvidenceCoverage",
     "ExtractedDoc",
     "FactualClaim",
     "FinalResponse",

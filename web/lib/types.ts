@@ -89,6 +89,14 @@ export interface StageDetails {
       relevance: number | null;
       confidence: number | null;
     }>;
+    /** Structured coverage flags emitted by S4. Present when S4 populates coverage. */
+    coverage?: {
+      has_primary_sources: boolean | null;
+      has_court_sources: boolean | null;
+      has_government_sources: boolean | null;
+      perspective_coverage_asymmetric: boolean | null;
+      asymmetry_note: string | null;
+    } | null;
     sufficiency?: {
       restricted_empirical_claims_required: boolean;
       primary_sources_missing: boolean;

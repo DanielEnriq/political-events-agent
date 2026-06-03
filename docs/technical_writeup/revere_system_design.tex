@@ -1,0 +1,597 @@
+%% Revere: A Structured Workflow for Auditable Political Reasoning
+%% Candidacy Project Technical Writeup
+%%
+%% Compile: pdflatex revere_system_design.tex  (run twice for cross-references)
+
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[margin=1.1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black,
+            citecolor=blue!60!black]{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{parskip}
+\usepackage{listings}
+\usepackage{microtype}
+
+\definecolor{muted}{RGB}{100,100,100}
+\definecolor{todo}{RGB}{160,40,40}
+\definecolor{codebg}{RGB}{245,245,245}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single, framerule=0.4pt, rulecolor=\color{gray!40},
+  breaklines=true, captionpos=b, aboveskip=6pt, belowskip=6pt, numbers=none,
+}
+
+\newcommand{\todo}[1]{\textcolor{todo}{\textbf{[TODO: #1]}}}
+\newcommand{\kw}[1]{\textbf{#1}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\file}[1]{\texttt{\small #1}}
+\newcommand{\provisional}[1]{\textcolor{muted}{\textit{#1}}}
+
+\setlist[itemize]{leftmargin=1.5em, itemsep=2pt, topsep=4pt}
+\setlist[enumerate]{leftmargin=1.5em, itemsep=2pt, topsep=4pt}
+\setlist[description]{leftmargin=1.5em, itemsep=3pt, topsep=4pt}
+
+\title{%
+  \textbf{Revere: A Structured Workflow for\\[3pt]Auditable Political Reasoning}\\[8pt]
+  \large Candidacy Project Technical Writeup
+}
+\author{Daniel Enriquez\\
+  New York University\\
+  \href{mailto:dee4002@nyu.edu}{dee4002@nyu.edu}}
+\date{\provisional{Draft — June 2026. Candidacy Project Technical Writeup.}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Revere is a political-reasoning agent whose central design choice is an
+explicit, sequential, seven-stage workflow. Each stage makes one structured
+LLM call and produces a Pydantic-validated output that becomes the typed input
+for the next stage. The orchestrator owns all control flow; the model owns all
+semantic reasoning within each stage's contract.
+
+This separation produces a readable record of every reasoning decision ---
+scope classification, search planning, per-source quality assessment,
+multi-perspective synthesis, claim verification, and a seven-point neutrality
+self-check --- without depending on raw chain-of-thought. A deterministic
+\code{EvidenceSufficiency} layer propagates structured coverage flags from
+Stage~4 into later stages, enforcing evidence-proportional hedging without
+additional model calls. Scope decisions are made by reasoning against a written
+charter, not by matching words in the query. This document describes the design
+rationale, stage contracts, evaluation methodology, and known limitations.
+\end{abstract}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+\label{sec:intro}
+
+Political AI systems face a credibility problem. A model that answers
+political questions fluently is not therefore answering them fairly or
+accurately. The failure mode is not hallucination in the narrow sense ---
+plausible-sounding words --- but authority fabrication: presenting contested
+claims with the same confidence as established facts, or distributing
+analytical effort asymmetrically across perspectives without acknowledging
+that asymmetry.
+
+Revere addresses this by making reasoning inspectable. Every query triggers a
+fixed sequence of typed reasoning steps, and the user can follow each one: which
+sources were assessed and how, what coverage gaps the evidence had, which
+specific claims were verified and to what confidence, and whether the final
+answer passed a structured neutrality check. The goal is not to eliminate model
+uncertainty --- that is impossible --- but to keep the \kw{source of truth
+visible}: the citations, source assessments, and claim-verification records
+remain readable independently of the prose answer.
+
+For a political assistant, these properties are not cosmetic. A system that
+classifies boundary cases by keyword matching cannot explain why it refused a
+question; a system that hedges claims uniformly cannot signal which ones are
+actually in doubt. Revere delegates all such judgments to typed LLM stage
+outputs, keeping control flow in deterministic Python. The rest of this document
+describes how that separation is achieved and what it costs.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Design Goals and Non-Goals}
+\label{sec:goals}
+
+The system has five design goals. \kw{Auditable reasoning}: every inference
+step should be visible as a typed structured output, independently inspectable
+from the final answer. \kw{Structured workflow, not free-form agent}: the
+pipeline is a deterministic sequence with no planning loop, no tool-calling
+cycle, and no self-directing decomposition; the orchestrator decides what runs,
+the model decides what it means. \kw{Scope reasoning, not keyword filtering}:
+boundary decisions are produced by LLM reasoning against a written charter;
+matching words in the query is a design pattern the system deliberately avoids.
+\kw{Evidence-proportional neutrality}: perspectives are represented in
+proportion to their retrieved evidence base, applying \kw{equal interpretive
+respect, not equal factual authority} --- weakly sourced views are attributed
+rather than asserted. \kw{Source-of-truth visibility}: citations, per-source
+assessments, coverage flags, and verification records are first-class outputs,
+not internal states.
+
+Three things are out of scope. Search is used for freshness and grounding, not
+as a definitive authority; the system does not do real-time fact-checking.
+Neutrality is about interpretive depth and sourcing quality, not word counts.
+The audit trace contains structured stage outputs, not the model's private
+chain-of-thought; those tokens are never captured.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{System Architecture}
+\label{sec:arch}
+
+\subsection{Layers}
+
+Revere has four layers. The \kw{schema layer} (\file{revere\_agent/schemas/})
+defines Pydantic models for every stage input and output, all using
+\code{ConfigDict(extra=\char`"forbid\char`")} so that extra fields from the
+model fail validation rather than passing silently. The \kw{stage layer}
+(\file{revere\_agent/agent/stages/}) contains one Python function per stage;
+each assembles a prompt from prior-stage outputs, calls the LLM via a shared
+helper, and returns a validated Pydantic object. No stage has side effects
+beyond its return value. The \kw{orchestrator layer}
+(\file{revere\_agent/agent/orchestrator.py}) sequences stage calls, owns the
+one deterministic branch (the out-of-scope short-circuit after S2), runs
+parallel search queries, derives \code{EvidenceSufficiency} from S4 output,
+and assembles the reasoning trace. The \kw{provider layer}
+(\file{revere\_agent/llm/}) is a Python Protocol abstraction with two concrete
+backends: \code{AnthropicProvider} (direct API, used in development) and
+\code{BedrockProvider} (AWS Bedrock, the production target). Stage code refers
+only to logical aliases (\code{sonnet-main}, \code{haiku-fast}); each provider
+resolves those internally, so switching backends is an environment-variable
+change.
+
+The FastAPI server wraps the orchestrator in a Server-Sent Events endpoint,
+streaming progress updates as each stage completes. The Next.js frontend
+proxies the stream without buffering and renders a live activity trace. S1 and
+S3 run on \code{haiku-fast} because they perform bounded structured operations
+(query normalization, search-query formulation) that require no political
+judgment. S2, S4, S5, S6, and S7 run on \code{sonnet-main}; scope decisions
+in particular are kept on the stronger model because a mistaken out-of-scope
+rejection is a hard failure.
+
+\subsection{Pipeline Diagram}
+
+\begin{center}
+\begin{verbatim}
+User message
+     |
+  [S1] Intake ----------------------- IntakeAnalysis
+     |                                (canonical query, modality,
+     |                                 multi_turn_dependency)
+  [S2] Scope  ----------------------- ScopeDecision
+     |   |                            (in_scope, reasoning,
+     |   |                             confidence, redirect)
+     |   +-- in_scope=False --> short-circuit
+     |         (S3-S7 do not run)
+     |
+  [S3] Search Plan ------------------ SearchPlan
+     |   |                            (needs_search, queries <=3,
+     |   |                             target_source_types)
+     |   +-- needs_search=True --> Tavily API (concurrent, <=4 workers,
+     |                                         deduped, <=6 hits passed on)
+     |
+  [S4] Source Quality --------------- EvidenceBase + EvidenceCoverage
+     |                                (assessments, confidence,
+     |                                 gaps, structured coverage flags)
+     |
+  [deterministic] EvidenceSufficiency (no LLM call)
+     |   derived from S4 coverage + S3 plan
+     |   propagated as binding constraint note
+     |   into S5, S6, S7 prompts
+     |
+  [S5] Perspectives ----------------- PerspectiveAnalysis
+     |                                (labelled views, core_claims,
+     |                                 evidence_coverage rating)
+     |
+  [S6] Verification ----------------- VerificationReport
+     |                                (FactualClaim list with claim_type,
+     |                                 support_level, drop_if_uncorroborated)
+     |
+  [S7] Compose + Check -------------- FinalResponse
+                                       (response_text, citations,
+                                        SelfCheckReport 7-criteria)
+\end{verbatim}
+\end{center}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Stage-by-Stage Workflow}
+\label{sec:stages}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{c p{2.5cm} p{2.8cm} p{5.3cm}}
+\toprule
+\textbf{Stage} & \textbf{Input} & \textbf{Output} & \textbf{Responsibility} \\
+\midrule
+S1 & User message + history & \code{IntakeAnalysis} &
+  Normalise query; resolve cross-turn referents; classify modality \\
+S2 & \code{IntakeAnalysis} & \code{ScopeDecision} &
+  Reason against charter; produce \code{in\_scope} and reasoning \\
+S3 & \code{IntakeAnalysis} & \code{SearchPlan} &
+  Decide whether retrieval adds value; formulate $\leq$3 queries \\
+Search & \code{SearchPlan} & \code{list[SearchHit]} &
+  Tavily API, concurrent execution, URL dedup (deterministic) \\
+S4 & Hits + \code{IntakeAnalysis} & \code{EvidenceBase} &
+  Per-source quality assessment; emit \code{EvidenceCoverage} \\
+Sufficiency & \code{EvidenceBase} + \code{SearchPlan} & \code{EvidenceSufficiency} &
+  Derive coverage flags (deterministic, no LLM) \\
+S5 & \code{EvidenceBase} + sufficiency & \code{PerspectiveAnalysis} &
+  Steelman each perspective; rate evidence coverage \\
+S6 & \code{EvidenceBase} + perspectives + sufficiency & \code{VerificationReport} &
+  Decompose claims; tag type, support level, do-not-assert \\
+S7 & All prior outputs & \code{FinalResponse} &
+  Draft answer; run 7-point \code{SelfCheckReport}; emit citations \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\bigskip
+
+\subsection{S1 --- Intake and Context Normalisation}
+
+S1 converts the raw user message and conversation history into a
+\code{canonical\_query}: a self-contained, pronoun-resolved restatement that
+all downstream stages receive as their point of reference. It also classifies
+the query's modality and sets a \code{multi\_turn\_dependency} flag. Without
+this stage, multi-turn sessions would require each later stage to re-parse
+history independently, creating inconsistency. Because S1 performs NLP
+normalization with no political judgment, it runs on the smaller model.
+
+\subsection{S2 --- Scope Reasoning}
+
+S2 decides whether the query falls within the agent's political-events domain
+by reasoning against a written system charter, not by matching words. The
+\code{ScopeDecision} schema's \code{reasoning} field requires the model to
+cite charter clauses rather than vocabulary, and the prompt opens with the
+explicit instruction: \textit{You MUST NOT use keyword matching.} If the
+decision is out-of-scope, the orchestrator short-circuits: S3 through S7 do
+not run, and \code{suggested\_redirect} from \code{ScopeDecision} is returned
+directly as the boundary response. This makes boundary handling cheap --- two
+LLM calls --- while leaving the reasoning that produced it in the trace.
+
+\subsection{S3 --- Search Planning}
+
+S3 decides whether external retrieval adds value for the current query, emitting
+a \code{SearchPlan} with a \code{needs\_search} flag, up to three queries, and
+a list of target source types. When search is not needed, execution is skipped
+and S4 runs in a no-search mode that documents the model-knowledge limitation
+in the evidence base. S3 runs on the smaller model because the output is
+bounded: a binary decision and a short query list.
+
+\subsection{Search Execution}
+
+Search execution is deterministic I/O with no LLM call. All queries run
+concurrently via a thread pool (max four workers); Python's \code{executor.map}
+preserves query order, making downstream URL deduplication deterministic
+regardless of network timing. At most six unique hits are passed to S4.
+
+\subsection{S4 --- Source Quality Reasoning}
+
+S4 judges each retrieved source on its type, authority, editorial slant,
+recency, and relevance, producing per-source \code{SourceAssessment} records
+and an aggregate confidence score. When no search ran, it produces a
+lightweight record documenting the model-knowledge limitation rather than
+fabricating assessments. The key output is a structured
+\code{EvidenceCoverage} object --- four typed booleans encoding whether the
+evidence base includes primary, court, or government sources, and whether
+coverage is asymmetric across perspectives. These booleans encode the semantic
+judgments that S4 is positioned to make, so that the next step can consume
+them without re-interpreting URL strings or prose text.
+
+\subsection{EvidenceSufficiency (deterministic)}
+
+\code{EvidenceSufficiency} is derived deterministically from
+\code{EvidenceCoverage} and the source types S3 requested --- no LLM call,
+no heuristics. It sets flags for low-confidence evidence, missing primary
+sources, unmet source-type requests, and asymmetric perspective coverage. When
+any flag is active, a compact binding-constraint note is injected into the
+S5, S6, and S7 prompts, requiring those stages to attribute or hedge claims
+from underserved perspectives rather than state them declaratively.
+
+\subsection{S5 --- Multi-Perspective Synthesis}
+
+S5 identifies the major political perspectives on the query and steelmans each
+one: framing it as a proponent would, not as an opponent would characterize it.
+Each perspective receives an \code{evidence\_coverage} rating (ranging from
+\texttt{sourced} to \texttt{none}) that the composition stage uses to calibrate
+language. Perspectives with thin source support must use attribution-first
+phrasing; perspectives well-grounded in the retrieved evidence may be stated
+more directly. This is the principle of equal interpretive respect, not equal
+factual authority.
+
+\subsection{S6 --- Claim Verification and Calibration}
+
+Before composing prose, S6 decomposes the planned response into atomic factual
+claims and rates each for confidence, verification basis, and support level.
+Claims flagged \code{drop\_if\_uncorroborated} must be removed by S7, not
+hedged. S6 also produces a \code{things\_i\_should\_not\_assert} list that
+S7 carries into composition. Separating this verification pass from composition
+is the core idea of Chain-of-Verification (Dhuliawala et al., 2023): calibrated
+hedging requires knowing which claims are actually in doubt before writing.
+
+\subsection{S7 --- Composition and Neutrality Self-Check}
+
+S7 writes the user-facing answer, applying S6's do-not-assert rules and the
+\code{EvidenceSufficiency} constraints. After composing a draft, it runs a
+\code{SelfCheckReport}: seven boolean criteria derived from Anthropic's
+political-evenhandedness principles (November 2025), covering whether the
+response avoids unsolicited opinion, steelmans each perspective, uses neutral
+terminology, distributes depth equally, and weights empirical claims
+proportionally to their source support. Revisions made to satisfy any failing
+criterion are recorded in the report alongside the final text. S7 compacts its
+inputs aggressively before the LLM call, reducing S4--S6 verbose reasoning
+fields to the structured conclusions S7 actually needs.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Prompt Contracts as Interfaces}
+\label{sec:prompts}
+
+Each stage prompt in \file{revere\_agent/prompts/} acts as an interface
+contract: it specifies which schema fields to populate, what semantic task to
+perform, and what constraints apply. The system charter is prepended to every
+stage's system message, so the same political-neutrality principles are in
+context for every LLM call. A 12-character SHA1 prefix of each prompt file is
+computed at load time and stored in the trace entry as \code{prompt\_version},
+linking any observed behavior change to a specific prompt edit without relying
+on git history alone.
+
+Three design choices are worth noting. S2's prompt opens with the literal
+instruction \textit{You MUST NOT use keyword matching}, and the schema's
+\code{reasoning} field requires charter clause references --- the prompt and
+schema reinforce the same constraint. S5's steelmanning requirement is framed
+as an Ideological Turing Test: would a proponent of this view endorse the
+framing? A self-assessment field in the schema asks the model to answer that
+question explicitly. S7's \code{SelfCheckReport} criteria were derived from
+Anthropic's published political-evenhandedness measurement work (November
+2025), so each boolean maps to a specific property that independent evaluations
+can also measure.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Source-of-Truth and Evidence Sufficiency}
+\label{sec:sourceoftruth}
+
+A recurring failure mode in AI-assisted research is \kw{authority fabrication}:
+the system cites a source that supports its conclusion, but the user has no way
+to assess whether the source is real, authoritative, or accurately paraphrased.
+Revere's response is to make the source base inspectable. The S4 per-source
+assessments, the \code{EvidenceCoverage} flags, and the S6 claim-verification
+records are all structured outputs that a reader can examine independently of
+the prose answer. Citations are typed objects in the final response schema, not
+incidental footnotes.
+
+The design of \code{EvidenceSufficiency} illustrates why this matters
+structurally. An earlier version computed coverage sufficiency in deterministic
+Python by (a) expanding source types based on URL domain patterns
+(\code{supremecourt.gov} $\to$ \texttt{court}; any \code{.gov} TLD $\to$
+\texttt{government}) and (b) scanning S4's free-text gap descriptions for
+phrases like \textit{one-sided} or \textit{asymmetric}. Both are semantic
+inference in deterministic code: they extract meaning from strings and
+LLM-generated prose outside of a structured LLM call, making the inference
+invisible to evaluation.
+
+The current design eliminates both heuristics. S4 now emits a structured
+\code{EvidenceCoverage} object --- four typed booleans and an optional
+\code{asymmetry\_note} --- encoding the coverage judgments that S4 is
+positioned to make. The deterministic \code{derive\_evidence\_sufficiency}
+function reads those booleans directly. No URL parsing, no keyword scanning.
+When \code{EvidenceCoverage} is absent (a fallback for legacy sessions),
+the function uses source-type enum comparison only and skips asymmetry
+detection entirely.
+
+\begin{lstlisting}[caption={\code{EvidenceCoverage} schema
+(\file{revere\_agent/schemas/source\_quality.py})}]
+class EvidenceCoverage(BaseModel):
+    has_primary_sources: bool
+    has_court_sources: bool
+    has_government_sources: bool
+    perspective_coverage_asymmetric: bool
+    asymmetry_note: str | None = None
+\end{lstlisting}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Structured Audit Trace and User Interface}
+\label{sec:ui}
+
+\subsection{Trace Design}
+
+After each stage runs, the orchestrator appends a \code{StageTraceEntry} to
+the \code{ReasoningTrace}. Each entry records the stage identifier, a SHA1
+prefix of the prompt file used, the model alias, the wall-clock duration, and
+the stage's Pydantic output serialised as a plain dictionary. Keeping the
+output as a dictionary makes the trace schema-agnostic: it does not need to
+enumerate the output types of every stage it might contain. The trace is a
+first-class deliverable, not a debug log. A reader inspecting it sees, for
+example, the \code{ScopeDecision.reasoning} field --- an LLM-produced string
+within a typed schema --- rather than raw model output tokens. This is the
+distinction between a structured audit trace and raw chain-of-thought.
+
+\subsection{User Interface}
+
+The Next.js frontend surfaces the same structured stage outputs the backend
+produces. A live activity trace updates as each stage completes, showing the
+stage name, duration, and a one-line summary. Selecting a stage opens a detail
+panel that renders its structured output: the scope reasoning text, per-source
+assessments, perspective labels with coverage ratings, factual-claim confidence
+cards, and the final \code{SelfCheckReport}. No reasoning logic is implemented
+in TypeScript; the panel is a view over the Python pipeline's typed outputs.
+A Gradio interface (\file{revere\_agent/ui/gradio\_app.py}) provides an
+alternative local entry point for quick testing without the Next.js server.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Evaluation Methodology}
+\label{sec:eval}
+
+\subsection{Structural Tests}
+
+The test suite contains 163 tests across 12 files, all using a
+\code{StubLLMProvider} that returns pre-configured Pydantic objects without
+calling the API. These tests verify pipeline correctness: stage contracts,
+the S2 short-circuit, concurrent search ordering, \code{EvidenceSufficiency}
+flag derivation, and S7 output compaction. Structural tests are regression
+safety, not behavioral quality measurement. They confirm the pipeline behaves
+as specified; they do not assess whether any particular response is politically
+neutral.
+
+\subsection{Behavioral Evaluation}
+
+Behavioral quality is assessed by running the five demonstration scenarios
+(Section~\ref{app:scenarios}) and inspecting the pipeline trace for each. The
+relevant signals are: the S2 scope decision and its reasoning text; which
+source types S3 requested; whether S4 found those types; the S5 perspective
+labels and evidence-coverage ratings; the S6 claim types and any
+do-not-assert decisions; and whether all seven S7 \code{SelfCheckReport}
+criteria pass. A planned paired-prompt protocol --- running the same query
+with neutrality-biasing framing and comparing perspective-coverage outcomes
+--- would provide independent evidence beyond the model's self-report, but
+has not yet been implemented.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Demonstration Cases and Results}
+\label{sec:demos}
+
+\provisional{This section will be filled with observed results after the demo
+recording. The five scenarios, in order:}
+
+\begin{enumerate}
+  \item \textit{2023 debt ceiling negotiations} --- both parties' positions
+        and the final agreement.
+  \item \textit{2024 presidential primary issues} --- information freshness
+        and balanced perspective coverage.
+  \item \textit{SFFA v.\ Harvard and UNC} --- affirmative action ruling;
+        legal, political, and social perspectives.
+  \item \textit{Weather / homework boundary management} --- graceful
+        out-of-scope handling via S2 reasoning.
+  \item \textit{Current immigration policy debate} --- perspective balance
+        and evidence-proportional language.
+\end{enumerate}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Limitations}
+\label{sec:limitations}
+
+\begin{description}
+  \item[\kw{No repair-search loop.}]
+    When S4 finds weak or asymmetric evidence, \code{EvidenceSufficiency}
+    restricts downstream claims rather than triggering a second search pass.
+    The system signals the gap to the user but does not attempt to fill it.
+
+  \item[\kw{Self-report bias in the neutrality check.}]
+    The \code{SelfCheckReport} is produced by the same model that wrote the
+    response. It is a structured introspective report, not an independent
+    evaluation. The planned paired-prompt protocol would provide external
+    validation.
+
+  \item[\kw{S4 coverage field compliance.}]
+    The \code{EvidenceCoverage} object is populated by the S4 LLM call. If
+    the model omits or mispopulates it, the fallback path applies simpler
+    source-type matching without asymmetry detection.
+
+  \item[\kw{Latency and retrieval freshness.}]
+    A full in-scope query with search takes roughly 90--120 seconds. The
+    Tavily free tier may not surface very recent articles, so the system can
+    flag freshness concerns but cannot always resolve them. Multi-turn history
+    is passed verbatim to S1; long sessions eventually approach token limits.
+\end{description}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Future Work}
+\label{sec:future}
+
+\begin{description}
+  \item[\kw{Repair-search loop.}]
+    When coverage is asymmetric or primary sources are missing, the
+    orchestrator should formulate a targeted follow-up search and re-run S4
+    on the augmented evidence base before proceeding to S5.
+
+  \item[\kw{External neutrality evaluation.}]
+    A paired-prompt protocol --- same query, different framing --- would
+    measure whether the system's perspective coverage changes under
+    neutrality-threatening input. This is the most important gap in the
+    current evaluation.
+
+  \item[\kw{History summarisation and adversarial robustness.}]
+    Long multi-turn sessions pass full history verbatim; a summarisation step
+    would remove the token-limit ceiling. S4 also operates on raw Tavily
+    snippets and has not been tested against prompt injection from retrieved
+    content.
+\end{description}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+\label{sec:conclusion}
+
+Revere's contribution is an architectural pattern: seven typed reasoning stages,
+each validated by a strict Pydantic schema, producing a readable record of
+every inference decision. The orchestrator owns all control flow in deterministic
+Python; the model owns all semantic judgment within each stage's contract. This
+division makes the system both inspectable --- the trace shows what each stage
+decided and why --- and testable without an API call.
+
+The key choices follow from the core claim. Scope decisions made by reasoning
+against a charter are inspectable and disputable; decisions made by keyword
+matching are not. Evidence coverage assessed by the model and emitted as typed
+booleans can be propagated deterministically; coverage inferred from URL strings
+in Python cannot be audited or corrected. Perspective depth rated per-source
+and carried as a binding constraint into composition produces evidence-
+proportional language; word-count parity does not. The open questions --- a
+repair-search loop, external neutrality evaluation, adversarial robustness ---
+are known and honest, and none of them undermine the design principle that
+makes the existing system auditable.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\appendix
+
+\section{Stage Schemas}
+\label{app:schemas}
+
+\provisional{Planned appendix. Will include key Pydantic class definitions
+from \file{revere\_agent/schemas/*.py} copied verbatim from source.}
+
+\section{Prompt Summary}
+\label{app:prompts}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l p{3.6cm} p{5.8cm}}
+\toprule
+\textbf{Prompt file} & \textbf{Semantic task} & \textbf{Key constraints} \\
+\midrule
+\file{system\_charter.md} & Define agent scope & Charter categories; no keyword enumeration \\
+\file{s1\_intake.md} & Query normalisation & Resolve pronouns; classify modality \\
+\file{s2\_scope.md} & Scope classification & Must reference charter clauses; no keyword matching \\
+\file{s3\_plan\_search.md} & Search planning & $\leq$3 queries; name target source types \\
+\file{s4\_source\_quality.md} & Source assessment & Per-source on 7 axes; emit EvidenceCoverage \\
+\file{s5\_perspectives.md} & Perspective synthesis & Steelman each view; rate evidence\_coverage \\
+\file{s6\_verification.md} & Claim verification & Tag claim\_type, support\_level; do-not-assert list \\
+\file{s7\_compose\_check.md} & Composition + self-check & Apply S6 rules; run SelfCheckReport \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Evaluation Scenarios}
+\label{app:scenarios}
+
+\provisional{The five scenarios from \file{docs/LLM\_Project.md} will be
+reproduced here with expected pipeline behavior and Inspector inspection
+points. To be filled after the demo recording.}
+
+\end{document}

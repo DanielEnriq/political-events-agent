@@ -61,6 +61,52 @@ class SourceAssessment(BaseModel):
     confidence_in_source: Annotated[int, Field(ge=1, le=5)]
 
 
+class EvidenceCoverage(BaseModel):
+    """Structured coverage judgment emitted by S4.
+
+    S4 populates this after assessing all retrieved sources. EvidenceSufficiency
+    consumes these typed booleans directly, eliminating domain heuristics and
+    gap-text keyword scanning from deterministic code.
+    """
+
+    model_config = StrictModel
+
+    has_primary_sources: bool = Field(
+        description=(
+            "True if any retrieved source qualifies as a primary, government, "
+            "or court record — i.e., an original or official document rather "
+            "than a secondary summary."
+        )
+    )
+    has_court_sources: bool = Field(
+        description=(
+            "True if any retrieved source is a court opinion, filing, or "
+            "official court document."
+        )
+    )
+    has_government_sources: bool = Field(
+        description=(
+            "True if any retrieved source is an official government publication, "
+            "agency page, or legislative record."
+        )
+    )
+    perspective_coverage_asymmetric: bool = Field(
+        description=(
+            "True if the retrieved evidence clearly favours one side of the "
+            "debate — i.e., one perspective has strong source support while "
+            "another lacks retrieved evidence."
+        )
+    )
+    asymmetry_note: str | None = Field(
+        default=None,
+        description=(
+            "Brief description of which perspective or side lacks retrieved "
+            "source support. Populate only when perspective_coverage_asymmetric "
+            "is True."
+        ),
+    )
+
+
 class EvidenceBase(BaseModel):
     """Aggregate of all source assessments + cross-source reasoning."""
 
@@ -77,4 +123,12 @@ class EvidenceBase(BaseModel):
     gaps: list[str] = Field(
         default_factory=list,
         description="What we still don't know after retrieval.",
+    )
+    coverage: EvidenceCoverage | None = Field(
+        default=None,
+        description=(
+            "Structured coverage flags produced by S4. When present, "
+            "EvidenceSufficiency uses these typed fields instead of domain "
+            "heuristics or gap-text keyword scanning."
+        ),
     )
