@@ -83,6 +83,22 @@ body {
   animation: microEventEnter 0.2s ease-out both;
 }
 
+/* Live note row entrance in the inspector timeline */
+@keyframes liveNoteEnter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-note-enter {
+  animation: liveNoteEnter 0.18s ease-out both;
+}
+
 /* Inspector content fade-in when stage selection changes */
 @keyframes inspectorEnter {
   from {
@@ -118,7 +134,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .active-stage-pulse,
   .active-stage-breathe,
-  .answer-enter {
+  .answer-enter,
+  .live-note-enter {
     animation: none;
   }
 }
@@ -188,28 +205,28 @@ body {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
-  margin-top: 1.75rem;
-  margin-bottom: 0.625rem;
-  line-height: 1.35;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
   letter-spacing: -0.01em;
 }
 
 .answer-prose h2 {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  margin-top: 2rem;
-  margin-bottom: 0.625rem;
-  line-height: 1.35;
+  margin-top: 2.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
   letter-spacing: 0.005em;
 }
 
 .answer-prose h3 {
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgba(245, 240, 232, 0.82);
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+  color: rgba(245, 240, 232, 0.88);
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
   line-height: 1.4;
 }
 
@@ -222,11 +239,12 @@ body {
 .answer-prose ul,
 .answer-prose ol {
   padding-left: 1.5rem;
-  margin-bottom: 0.9rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 .answer-prose li {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   line-height: 1.72;
 }
 

@@ -50,6 +50,7 @@ def run_s4_source_quality(
     extracted: list[ExtractedDoc] | None = None,
     *,
     search_was_performed: bool,
+    max_tokens: int = 2048,
 ) -> EvidenceBase:
     """Build an EvidenceBase from the hits, or document the no-search case."""
     extracted = extracted or []
@@ -76,4 +77,5 @@ def run_s4_source_quality(
         stage_id="s4_source_quality",
         user_content=user_content,
         output_schema=EvidenceBase,
+        max_tokens=max_tokens,
     )

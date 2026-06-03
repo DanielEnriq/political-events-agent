@@ -726,15 +726,48 @@ export default function Inspector({ selected, messages }: Props) {
           </div>
         )}
 
-        {/* Active stage */}
-        {isActive && (
-          <div className="rounded border border-border/40 px-3 py-2.5 space-y-1">
-            <p className="text-xs text-accent/70 italic active-stage-breathe">Running…</p>
-            {activeSummary && (
-              <p className="text-xs text-muted/60">{activeSummary}</p>
-            )}
-          </div>
-        )}
+        {/* Active stage — live progress timeline */}
+        {isActive && (() => {
+          const noteHistory = safeArr<string>(msg.liveNoteHistory?.[selected.stageId]);
+          return (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent/70 active-stage-pulse flex-shrink-0" />
+                <span className="text-[10px] font-semibold text-muted/55 uppercase tracking-widest">
+                  Stage activity
+                </span>
+              </div>
+              <div className="space-y-2 pl-0.5">
+                {noteHistory.length > 0 ? (
+                  noteHistory.map((note, i) => {
+                    const isLatest = i === noteHistory.length - 1;
+                    return (
+                      <div key={i} className="flex items-start gap-2 live-note-enter">
+                        <span className={`w-1 h-1 rounded-full mt-[5px] flex-shrink-0 ${
+                          isLatest ? "bg-accent/55" : "bg-border/50"
+                        }`} />
+                        <p className={`text-xs leading-relaxed ${
+                          isLatest
+                            ? "text-text/65 active-stage-breathe"
+                            : "text-muted/28"
+                        }`}>
+                          {note}
+                        </p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <span className="w-1 h-1 rounded-full mt-[5px] bg-accent/35 active-stage-pulse flex-shrink-0" />
+                    <p className="text-xs text-muted/40 active-stage-breathe">
+                      Preparing stage…
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Not started yet */}
         {!hasStarted && (

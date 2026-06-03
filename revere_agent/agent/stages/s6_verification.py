@@ -77,6 +77,7 @@ def run_s6_verification(
     perspectives: PerspectiveAnalysis,
     *,
     sufficiency: EvidenceSufficiency | None = None,
+    max_tokens: int = 2048,
 ) -> VerificationReport:
     """Generate a concrete claim-level verification/calibration report."""
     weak_evidence = (not evidence.assessments) or (evidence.confidence_in_evidence <= 3)
@@ -99,4 +100,5 @@ def run_s6_verification(
         stage_id="s6_verification",
         user_content=user_content,
         output_schema=VerificationReport,
+        max_tokens=max_tokens,
     )

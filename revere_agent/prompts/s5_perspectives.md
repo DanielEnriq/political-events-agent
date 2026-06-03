@@ -124,7 +124,7 @@ asserting its weakest empirical claims as established fact.
 - Keep `strongest_evidence` to **up to 3 items** per perspective.
 - Keep `key_concerns_about_other_views` to **up to 3 items**.
 - Keep each list item concise (target <= 30 words).
-- Keep `steelman_quality_self_assessment` to **1-2 short sentences**.
+- Keep `steelman_quality_self_assessment` to **1 sentence**.
 
 ## The symmetry test
 

@@ -169,6 +169,10 @@ export interface AssistantMessage {
   status: "running" | "done" | "error";
   /** Grows as SSE progress events arrive during streaming. */
   traceEvents: ProgressEvent[];
+  /** Latest live-note text per stage_id — used by the compact in-chat trace. */
+  liveNotes?: Record<string, string>;
+  /** Full recent note list per stage_id (max 4) — used by the inspector timeline. */
+  liveNoteHistory?: Record<string, string[]>;
   /** Populated from the SSE complete event. */
   result?: CompletePayload;
   /** Populated from SSE error events or caught exceptions. */

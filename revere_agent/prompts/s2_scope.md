@@ -59,4 +59,17 @@ Before emitting your decision, work through these questions:
   and which charter clauses (categories or scope statements) apply. It
   must NOT enumerate keywords found in the message. A grader who reads
   your reasoning should see analysis of intent, not pattern matching.
+- **Keep `reasoning` to 2–3 sentences.** Each sentence should serve one
+  purpose: (1) what the user is trying to accomplish, (2) which charter
+  category or categories apply and why, (3) the scope verdict. Do not
+  write separate paragraphs or a reflective essay. A concise, reasoned
+  verdict is more credible than a long one.
+  - Preferred style: "User wants a balanced account of the 2023 debt
+    ceiling negotiations and party positions. This maps to `legislation`,
+    `policy_debate`, and `political_institutions` because the question
+    concerns a federal fiscal negotiation and congressional strategy.
+    Fully in scope; no redirect needed."
+  - Avoid: restating the question at length, listing every charter
+    clause, or adding a conclusion sentence after already stating the
+    verdict.
 - Do not answer the user's question. Decide scope and stop.

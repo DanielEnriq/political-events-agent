@@ -17,8 +17,15 @@ def run_s2_scope(
     provider: LLMProvider,
     intake: IntakeAnalysis,
     history: list[tuple[str, str]] | None = None,
+    *,
+    max_tokens: int = 1024,
 ) -> ScopeDecision:
-    """Decide in-scope by reasoning about charter clauses, not keywords."""
+    """Decide in-scope by reasoning about charter clauses, not keywords.
+
+    Intentionally stays on the default model (sonnet-main). Scope decisions
+    are rubric-critical: a false out-of-scope on any demo scenario is a
+    failure. Do not pass a haiku alias here.
+    """
     user_content = (
         f"Intake analysis (S1 output):\n{intake.model_dump_json(indent=2)}\n\n"
         f"Recent conversation history:\n{_format_history(history)}\n\n"
@@ -30,4 +37,5 @@ def run_s2_scope(
         stage_id="s2_scope",
         user_content=user_content,
         output_schema=ScopeDecision,
+        max_tokens=max_tokens,
     )

@@ -223,6 +223,19 @@ export default function TraceCard({ message, selectedStageId, onSelectStage }: P
               )}
             </button>
 
+            {/* Live note — shown only while stage is actively running */}
+            {isActive && !isComplete && (() => {
+              const note = message.liveNotes?.[e.stage_id];
+              if (!note) return null;
+              return (
+                <div className="pl-5">
+                  <p className="text-[11px] text-muted/45 italic active-stage-breathe">
+                    {note}
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* Micro-events */}
             {visibleEvents.length > 0 && (
               <div className="pl-5 space-y-1.5">

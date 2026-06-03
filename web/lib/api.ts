@@ -5,6 +5,7 @@ export type SSEHandlers = {
   onProgress: (event: ProgressEvent) => void;
   onComplete: (payload: CompletePayload) => void;
   onError: (message: string) => void;
+  onStageNote?: (stageId: string, text: string) => void;
 };
 
 /**
@@ -46,6 +47,11 @@ function dispatchFrame(frame: string, handlers: SSEHandlers): void {
         handlers.onError(
           typeof parsed?.message === "string" ? parsed.message : "Unknown error"
         );
+        break;
+      case "stage_note":
+        if (typeof parsed?.stage_id === "string" && typeof parsed?.text === "string") {
+          handlers.onStageNote?.(parsed.stage_id, parsed.text);
+        }
         break;
       default:
         // Unknown event type — ignore silently

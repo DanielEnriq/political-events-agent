@@ -23,7 +23,8 @@ export default function MessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
-  const prevRunningRef = useRef(false);
+  const prevRunningIdRef = useRef<string | null>(null);
+  const runningMsgRef = useRef<HTMLDivElement | null>(null);
 
   function onScroll() {
     const el = containerRef.current;
@@ -33,16 +34,24 @@ export default function MessageList({
   }
 
   useEffect(() => {
-    const isRunning = messages.some(
-      m => isAssistant(m) && m.status === "running"
-    );
-    const wasRunning = prevRunningRef.current;
-    prevRunningRef.current = isRunning;
+    const runningMsg = messages.find(m => isAssistant(m) && m.status === "running");
+    const currentRunningId = runningMsg?.id ?? null;
+    const prevRunningId = prevRunningIdRef.current;
+    prevRunningIdRef.current = currentRunningId;
+
+    // New follow-up turn started — always scroll to the new running message
+    // regardless of scroll position (user may have scrolled up to read a prior answer).
+    if (currentRunningId !== null && currentRunningId !== prevRunningId) {
+      requestAnimationFrame(() => {
+        runningMsgRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
 
     // On completion (running → done), don't jump to bottom — let answer reveal in place.
-    if (wasRunning && !isRunning) return;
+    if (prevRunningId !== null && currentRunningId === null) return;
 
-    // Auto-scroll only if the user is near the bottom.
+    // During an ongoing run, auto-scroll only if near the bottom.
     if (isAtBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
@@ -82,7 +91,11 @@ export default function MessageList({
 
         if (isAssistant(msg)) {
           return (
-            <div key={msg.id} className="w-full">
+            <div
+              key={msg.id}
+              className="w-full"
+              ref={msg.status === "running" ? runningMsgRef : undefined}
+            >
               <AssistantMessageView
                 message={msg}
                 selectedStageId={

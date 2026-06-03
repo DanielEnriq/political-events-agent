@@ -75,6 +75,7 @@ class StubLLMProvider:
                     "user": user,
                     "model_alias": model_alias,
                     "temperature": temperature,
+                    "max_tokens": max_tokens,
                 },
             )
         )
@@ -408,9 +409,10 @@ def test_in_scope_with_search_calls_search_provider_per_query() -> None:
         "What happened with the debt ceiling negotiations in 2023?"
     )
 
-    # Search ran once per query.
+    # Search ran once per query. Order is non-deterministic with parallel
+    # execution, so check set equality rather than ordered equality.
     assert len(search.search_calls) == 2
-    assert [c[0] for c in search.search_calls] == plan.queries
+    assert set(c[0] for c in search.search_calls) == set(plan.queries)
 
     assert result.search_executed is True
     # De-dup leaves a single hit (same URL twice).
@@ -574,3 +576,186 @@ def test_existing_day1_tests_still_pass_via_import() -> None:
     # A representative Day 1 invariant: every schema we'd hand to Claude is
     # still extra-forbidden.
     assert IntakeAnalysis.model_json_schema()["additionalProperties"] is False
+
+
+# ── Model alias and max_tokens routing tests ──────────────────────────
+
+
+def _full_llm_stub() -> StubLLMProvider:
+    """Shared stub for tests that run the full 7-stage pipeline."""
+    return StubLLMProvider(
+        responses={
+            IntakeAnalysis: _intake(),
+            ScopeDecision: _scope_in(),
+            SearchPlan: _plan_search_no(),
+            EvidenceBase: _evidence_model_only(),
+            PerspectiveAnalysis: _perspectives_two(),
+            VerificationReport: _verification_report_weak(),
+            FinalResponse: _final_response(),
+        }
+    )
+
+
+def test_s1_and_s3_use_haiku_fast_s2_stays_sonnet() -> None:
+    """S1 and S3 must use haiku-fast; S2 and all subsequent stages must use sonnet-main.
+
+    Call order for the no-search path:
+      0 = S1 (IntakeAnalysis)
+      1 = S2 (ScopeDecision)
+      2 = S3 (SearchPlan)
+      3 = S4, 4 = S5, 5 = S6, 6 = S7
+    """
+    llm = _full_llm_stub()
+    orch = Orchestrator(llm_provider=llm, search_provider=None)  # type: ignore[arg-type]
+    orch.run_turn("What is the filibuster?")
+
+    assert len(llm.calls) == 7
+    assert llm.calls[0][1]["model_alias"] == "haiku-fast"   # S1
+    assert llm.calls[1][1]["model_alias"] == "sonnet-main"  # S2 — must not change
+    assert llm.calls[2][1]["model_alias"] == "haiku-fast"   # S3
+    for call in llm.calls[3:]:
+        assert call[1]["model_alias"] == "sonnet-main"      # S4, S5, S6, S7
+
+
+def test_stage_max_tokens_match_documented_budgets() -> None:
+    """Every stage must pass its documented max_tokens budget to the LLM provider.
+
+    Call order for the no-search path:
+      0 = S1 (768)
+      1 = S2 (1024)
+      2 = S3 (1024)
+      3 = S4 (2048)
+      4 = S5 (4096 — unchanged)
+      5 = S6 (2048)
+      6 = S7 (4096 — unchanged)
+    """
+    expected_max_tokens = [768, 1024, 1024, 2048, 4096, 2048, 4096]
+    llm = _full_llm_stub()
+    orch = Orchestrator(llm_provider=llm, search_provider=None)  # type: ignore[arg-type]
+    orch.run_turn("What is the filibuster?")
+
+    assert len(llm.calls) == 7
+    for i, expected in enumerate(expected_max_tokens):
+        actual = llm.calls[i][1]["max_tokens"]
+        stage_name = ["S1", "S2", "S3", "S4", "S5", "S6", "S7"][i]
+        assert actual == expected, (
+            f"{stage_name}: expected max_tokens={expected}, got {actual}"
+        )
+
+
+def test_s1_passes_model_alias_through_to_run_llm_stage() -> None:
+    """run_s1_intake kwarg model_alias is forwarded to provider.call_structured."""
+    from revere_agent.agent.stages.s1_intake import run_s1_intake
+
+    llm = StubLLMProvider(responses={IntakeAnalysis: _intake()})
+    run_s1_intake(llm, "Test query", None, model_alias="haiku-fast")  # type: ignore[arg-type]
+
+    assert len(llm.calls) == 1
+    assert llm.calls[0][1]["model_alias"] == "haiku-fast"
+
+
+def test_s3_passes_model_alias_through_to_run_llm_stage() -> None:
+    """run_s3_plan_search kwarg model_alias is forwarded to provider.call_structured."""
+    from revere_agent.agent.stages.s3_plan_search import run_s3_plan_search
+
+    llm = StubLLMProvider(responses={SearchPlan: _plan_search_no()})
+    run_s3_plan_search(llm, _intake(), model_alias="haiku-fast")  # type: ignore[arg-type]
+
+    assert len(llm.calls) == 1
+    assert llm.calls[0][1]["model_alias"] == "haiku-fast"
+
+
+def test_s1_default_model_alias_is_sonnet_main() -> None:
+    """run_s1_intake defaults to sonnet-main so standalone callers are unaffected."""
+    from revere_agent.agent.stages.s1_intake import run_s1_intake
+
+    llm = StubLLMProvider(responses={IntakeAnalysis: _intake()})
+    run_s1_intake(llm, "Test query")  # type: ignore[arg-type]
+
+    assert llm.calls[0][1]["model_alias"] == "sonnet-main"
+
+
+def test_s3_default_model_alias_is_sonnet_main() -> None:
+    """run_s3_plan_search defaults to sonnet-main so standalone callers are unaffected."""
+    from revere_agent.agent.stages.s3_plan_search import run_s3_plan_search
+
+    llm = StubLLMProvider(responses={SearchPlan: _plan_search_no()})
+    run_s3_plan_search(llm, _intake())  # type: ignore[arg-type]
+
+    assert llm.calls[0][1]["model_alias"] == "sonnet-main"
+
+
+def test_s4_passes_max_tokens_through_to_run_llm_stage() -> None:
+    """run_s4_source_quality kwarg max_tokens is forwarded to provider.call_structured."""
+    from revere_agent.agent.stages.s4_source_quality import run_s4_source_quality
+
+    llm = StubLLMProvider(responses={EvidenceBase: _evidence_model_only()})
+    run_s4_source_quality(
+        llm, _intake(), hits=[], search_was_performed=False, max_tokens=2048  # type: ignore[arg-type]
+    )
+
+    assert len(llm.calls) == 1
+    assert llm.calls[0][1]["max_tokens"] == 2048
+
+
+def test_s6_passes_max_tokens_through_to_run_llm_stage() -> None:
+    """run_s6_verification kwarg max_tokens is forwarded to provider.call_structured."""
+    from revere_agent.agent.stages.s6_verification import run_s6_verification
+
+    llm = StubLLMProvider(responses={VerificationReport: _verification_report_weak()})
+    run_s6_verification(
+        llm, _intake(), _evidence_model_only(), _perspectives_two(), max_tokens=2048  # type: ignore[arg-type]
+    )
+
+    assert len(llm.calls) == 1
+    assert llm.calls[0][1]["max_tokens"] == 2048
+
+
+def test_s4_default_max_tokens_is_2048() -> None:
+    """run_s4_source_quality defaults to 2048 when no max_tokens is passed."""
+    from revere_agent.agent.stages.s4_source_quality import run_s4_source_quality
+
+    llm = StubLLMProvider(responses={EvidenceBase: _evidence_model_only()})
+    run_s4_source_quality(llm, _intake(), hits=[], search_was_performed=False)  # type: ignore[arg-type]
+
+    assert llm.calls[0][1]["max_tokens"] == 2048
+
+
+def test_s6_default_max_tokens_is_2048() -> None:
+    """run_s6_verification defaults to 2048 when no max_tokens is passed."""
+    from revere_agent.agent.stages.s6_verification import run_s6_verification
+
+    llm = StubLLMProvider(responses={VerificationReport: _verification_report_weak()})
+    run_s6_verification(llm, _intake(), _evidence_model_only(), _perspectives_two())  # type: ignore[arg-type]
+
+    assert llm.calls[0][1]["max_tokens"] == 2048
+
+
+def test_multiturn_history_reaches_s1_when_haiku_fast_is_used() -> None:
+    """History must appear in S1's user prompt even when the orchestrator uses haiku-fast.
+
+    Tests that the model_alias override does not accidentally drop the history
+    argument or break the multi-turn referent resolution pathway.
+    """
+    from revere_agent.agent.state import ConversationState
+
+    llm = StubLLMProvider(
+        responses={
+            IntakeAnalysis: _intake(),
+            ScopeDecision: _scope_out(),  # short-circuit after S2 to keep it fast
+        }
+    )
+    orch = Orchestrator(llm_provider=llm, search_provider=None)  # type: ignore[arg-type]
+
+    state = ConversationState()
+    state.record("user", "Tell me about the 2023 debt ceiling deal.")
+    state.record("assistant", "The Fiscal Responsibility Act of 2023 suspended the ceiling.")
+
+    orch.run_turn("What were the spending caps in that deal?", state=state)
+
+    s1_call = llm.calls[0]
+    assert s1_call[0] is IntakeAnalysis
+    assert s1_call[1]["model_alias"] == "haiku-fast"
+    # Prior turn content must appear in the user prompt so S1 can resolve "that deal".
+    assert "debt ceiling" in s1_call[1]["user"]
+    assert "Fiscal Responsibility Act" in s1_call[1]["user"]

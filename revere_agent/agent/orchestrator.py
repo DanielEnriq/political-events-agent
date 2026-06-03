@@ -16,6 +16,8 @@ one. That keeps the boundary path cheap and the trace honest.
 
 from __future__ import annotations
 
+import concurrent.futures
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -97,6 +99,50 @@ STAGE_NUMBERS: dict[str, int] = {
     "s7_compose_check": 7,
 }
 
+# Deterministic in-progress notes shown while each LLM stage is running.
+# These are template strings — no LLM calls, no reasoning, pure UX feedback.
+STAGE_LIVE_NOTES: dict[str, list[str]] = {
+    "s1_intake": [
+        "Parsing query structure and intent…",
+        "Identifying multi-turn referents…",
+        "Classifying modality (factual / opinion / boundary)…",
+    ],
+    "s2_scope": [
+        "Comparing request against charter…",
+        "Reasoning about political-domain boundaries…",
+        "Evaluating confidence in scope classification…",
+    ],
+    "s3_plan_search": [
+        "Assessing whether live retrieval is needed…",
+        "Evaluating model-knowledge recency…",
+        "Formulating targeted search queries…",
+    ],
+    "s4_source_quality": [
+        "Assessing source authority, type, and relevance…",
+        "Checking whether primary or official sources were retrieved…",
+        "Looking for evidence gaps and asymmetric coverage…",
+        "Calibrating confidence in the evidence base…",
+    ],
+    "s5_perspectives": [
+        "Identifying distinct political viewpoints on this topic…",
+        "Steelmanning each perspective with its strongest evidence…",
+        "Separating factual consensus from interpretive disagreement…",
+        "Checking whether weakly sourced claims need attribution…",
+    ],
+    "s6_verification": [
+        "Identifying factual claims that need calibration…",
+        "Separating verified facts from reported claims…",
+        "Flagging unsupported or outcome-relevant assertions…",
+        "Attaching hedging where evidence is limited…",
+    ],
+    "s7_compose_check": [
+        "Drafting balanced response from synthesized evidence…",
+        "Running neutrality and evidence-proportionality check…",
+        "Checking whether the draft takes a side beyond the sourced record…",
+        "Reviewing attribution and hedging for uncertain claims…",
+    ],
+}
+
 
 @dataclass
 class ProgressEvent:
@@ -105,7 +151,7 @@ class ProgressEvent:
     stage_id: str
     stage_num: int | None
     total_stages: int
-    status: Literal["started", "completed", "stopped"]
+    status: Literal["started", "completed", "stopped", "live_note"]
     message: str
     output: dict[str, Any] | None = None
     duration_ms: int | None = None
@@ -122,6 +168,39 @@ class SearchExecutionStats:
     unique_hits_after_dedup: int
     hits_passed_to_s4: int
     results_capped: bool
+
+
+def _run_search_queries(
+    search: SearchProvider,
+    queries: list[str],
+    max_results: int,
+) -> list[SearchHit]:
+    """Execute multiple search queries concurrently and return all hits in query order.
+
+    Each query is an independent network request with no shared state, so they
+    can safely overlap. ThreadPoolExecutor.map() preserves input order — hits
+    from query[0] always come before hits from query[1] in the output — which
+    keeps deduplication downstream deterministic regardless of which query
+    finishes first.
+
+    Any exception from a query propagates normally (same behavior as the
+    original serial loop). If one query raises, the entire search fails.
+    """
+    worker_count = min(len(queries), 4)
+
+    def _fetch_one(query: str) -> list[SearchHit]:
+        return search.search(query, max_results=max_results, advanced=True)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        # map() blocks until all futures complete and re-raises any exception.
+        # Results are returned in the same order as the input queries.
+        results_per_query = list(executor.map(_fetch_one, queries))
+
+    # Flatten: list[list[SearchHit]] → list[SearchHit], preserving query order.
+    all_hits: list[SearchHit] = []
+    for query_hits in results_per_query:
+        all_hits.extend(query_hits)
+    return all_hits
 
 
 class Orchestrator:
@@ -188,7 +267,13 @@ class Orchestrator:
         intake = self._record(
             trace,
             "s1_intake",
-            lambda: run_s1_intake(self.llm, user_message, state.history),
+            lambda: run_s1_intake(
+                self.llm,
+                user_message,
+                state.history,
+                model_alias="haiku-fast",  # NLP normalization only — safe for Haiku
+                max_tokens=768,
+            ),
             _emit=_emit,
         )
 
@@ -197,7 +282,12 @@ class Orchestrator:
         scope = self._record(
             trace,
             "s2_scope",
-            lambda: run_s2_scope(self.llm, intake, state.history),
+            lambda: run_s2_scope(
+                self.llm,
+                intake,
+                state.history,
+                max_tokens=1024,  # stays on sonnet-main; scope is rubric-critical
+            ),
             _emit=_emit,
         )
 
@@ -222,7 +312,12 @@ class Orchestrator:
         plan = self._record(
             trace,
             "s3_plan_search",
-            lambda: run_s3_plan_search(self.llm, intake),
+            lambda: run_s3_plan_search(
+                self.llm,
+                intake,
+                model_alias="haiku-fast",  # structured planning + short query list — safe for Haiku
+                max_tokens=1024,
+            ),
             _emit=_emit,
         )
 
@@ -236,13 +331,13 @@ class Orchestrator:
         if plan.needs_search and self.search is not None and plan.queries:
             _progress("search_execution")
             search_executed = True
-            for query in plan.queries:
-                query_hits = self.search.search(
-                    query, max_results=self.search_max_results, advanced=True
-                )
-                search_calls_made += 1
-                raw_hits_count += len(query_hits)
-                hits.extend(query_hits)
+            # Run all queries concurrently. Results are returned in query order.
+            raw_hits = _run_search_queries(
+                self.search, plan.queries, self.search_max_results
+            )
+            search_calls_made = len(plan.queries)
+            raw_hits_count = len(raw_hits)
+            hits.extend(raw_hits)
             # De-dup by URL while preserving order.
             seen: set[str] = set()
             deduped: list[SearchHit] = []
@@ -360,8 +455,37 @@ class Orchestrator:
     ):
         """Call a stage, time it, append a StageTraceEntry, return the output."""
         stage_num = STAGE_NUMBERS.get(stage_id)
+
+        # Background thread emits deterministic in-progress notes while the
+        # stage's LLM call is running. Stop signal fires as soon as fn() returns.
+        stop = threading.Event()
+        notes = STAGE_LIVE_NOTES.get(stage_id)
+        if _emit is not None and notes:
+            delays = [1.5, 3.0, 5.0, 7.0]
+
+            def _emitter() -> None:
+                for i, note in enumerate(notes):
+                    wait_s = delays[i] if i < len(delays) else delays[-1]
+                    if stop.wait(timeout=wait_s):
+                        return
+                    _emit(
+                        ProgressEvent(
+                            stage_id=stage_id,
+                            stage_num=stage_num,
+                            total_stages=7,
+                            status="live_note",
+                            message=note,
+                        )
+                    )
+
+            threading.Thread(target=_emitter, daemon=True).start()
+
         start = time.monotonic()
-        output = fn()
+        try:
+            output = fn()
+        finally:
+            stop.set()
+
         duration_ms = int((time.monotonic() - start) * 1000)
         trace.entries.append(
             StageTraceEntry(

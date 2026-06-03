@@ -14,7 +14,11 @@ Extract the most important factual claims implied by S4/S5, then calibrate
 each claim with confidence and verification basis.
 
 ## Claim selection
-- Return **4-8** high-impact factual claims.
+- Return **4–6** high-impact factual claims.
+  - Prefer **4 claims** for simple factual, conceptual, or single-event
+    questions.
+  - Use **5–6** only for multi-part, heavily contested, or high-stakes
+    questions where additional claims materially affect answer calibration.
 - Prefer claims likely to appear in the final answer.
 - Prioritize claims that are:
   - specific (dates, vote counts, dollar amounts, percentages),
@@ -110,9 +114,28 @@ treat it as binding — it operationalizes the constraints above from S3/S4
 results and must be applied even if the general weak-evidence trigger
 conditions above are not all met.
 
+## Optional metadata field discipline
+`claim_type`, `support_level`, `attribution`, and `outcome_relevance` are
+optional. Populate them when they add meaningful signal beyond what
+`confidence` and `verification_basis` already convey:
+- **Always populate** for `reported_claim`, `disputed_interpretation`, or
+  `unsupported_claim` — these classifications materially affect how S7
+  must phrase the answer.
+- **Populate `attribution`** whenever `claim_type=reported_claim`.
+- **Populate `outcome_relevance`** for claims where `direct` or `indirect`
+  would cause S7 to hedge or omit differently.
+- **Skip all optional fields** for obvious `verified_fact` claims where
+  `confidence=4–5` and `verification_basis=evidence_base` already tell
+  the full story. Do not fill them reflexively.
+- **Never omit `drop_if_uncorroborated`** when a claim is high-risk.
+
 ## Overall fields
-- `overall_calibration_note`: 1-2 concise sentences.
-- `things_i_should_not_assert`: concrete claims to avoid in final response.
+- `overall_calibration_note`: 1–2 concise sentences.
+- `things_i_should_not_assert`: prescriptive rules for the final answer —
+  what must NOT be said. Do not merely restate S4 evidence gaps. Convert
+  each gap into a concrete prohibition: not "primary sources were missing"
+  but "do not assert specific vote counts as confirmed." List only items
+  that would otherwise likely appear in S7 draft prose.
 
 ## Critical
 - No generic reflection essay.

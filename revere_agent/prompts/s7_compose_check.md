@@ -84,8 +84,26 @@ If any check fails, revise once before returning final output.
 Record concrete edits in `revisions_made`.
 
 ## Residual uncertainty + followups
-- `residual_uncertainty`: concise, user-readable statement of limits.
-- `suggested_followups`: 2-3 useful next questions.
+- `residual_uncertainty`: **1–2 sentences.** Focus on what the reader
+  should actively doubt or independently verify — not a restatement of
+  every evidence gap. If material gaps were already acknowledged in the
+  answer body, the residual uncertainty should be a concise reminder, not
+  another full explanation.
+- `suggested_followups`: **exactly 2–3 items, each ≤ 15 words.**
+
+## Role distinctions (do not conflate)
+These three fields serve different purposes and must not echo each other:
+- **S4 gaps** = what evidence was missing during retrieval (source-layer).
+- **S6 `things_i_should_not_assert`** = prescriptive rules for this
+  answer: concrete prohibitions on what to omit or attribute (claim-layer).
+- **S7 `residual_uncertainty`** = concise user-facing note about what
+  remains uncertain after reading the answer (reader-layer). Do not
+  copy-paste from S4 gaps or S6 prohibitions.
+
+## Concision requirements
+- `revisions_made`: **at most 3 items.** Choose the most substantive edits
+  only. One sentence each, ≤ 20 words. If no revisions were needed,
+  return an empty list — do not invent minor ones.
 
 ## Critical
 - No internal chain-of-thought.

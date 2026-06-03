@@ -609,7 +609,10 @@ def _stream_turn(req: ChatRequest):
         event = event_q.get()
         if event is None:
             break
-        yield _sse("progress", _serialize_progress(event))
+        if event.status == "live_note":
+            yield _sse("stage_note", {"stage_id": event.stage_id, "text": event.message})
+        else:
+            yield _sse("progress", _serialize_progress(event))
 
     if "error" in error_holder:
         err = error_holder["error"]

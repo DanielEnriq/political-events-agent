@@ -84,23 +84,23 @@ function InlineAnswer({
               return (
                 <li
                   key={i}
-                  className="group px-2.5 py-1.5 rounded border border-border/15 hover:border-border/40 hover:bg-white/[0.02] transition-all space-y-0.5"
+                  className="group px-2.5 py-2 rounded border border-border/25 hover:border-accent/30 hover:bg-white/[0.03] transition-all space-y-0.5"
                 >
                   <div className="flex items-start gap-1.5 min-w-0">
                     <a
                       href={c.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[12px] text-accent/80 hover:text-accent font-medium leading-snug flex-1 min-w-0 transition-colors"
+                      className="text-[12px] text-accent/90 hover:text-accent font-medium leading-snug flex-1 min-w-0 transition-colors"
                     >
                       {c.label}
                     </a>
-                    <span className="text-[10px] text-muted/30 group-hover:text-muted/55 flex-shrink-0 mt-px transition-colors">
+                    <span className="text-[10px] text-muted/50 group-hover:text-muted/70 flex-shrink-0 mt-px transition-colors">
                       {domain}
                     </span>
                   </div>
                   {c.used_for_claim && (
-                    <p className="text-[11px] text-muted/35 leading-snug">
+                    <p className="text-[11px] text-muted/55 leading-snug">
                       Used for: {c.used_for_claim}
                     </p>
                   )}
@@ -129,7 +129,7 @@ function InlineAnswer({
             </button>
           </div>
           {uncertaintyOpen && (
-            <p className="mt-2 text-[12px] text-muted/55 italic leading-relaxed pl-2 border-l border-border/30">
+            <p className="mt-2 text-[12px] text-muted/75 leading-relaxed pl-3 border-l-2 border-border/40">
               {result.residual_uncertainty}
             </p>
           )}
@@ -147,9 +147,9 @@ function InlineAnswer({
               key={i}
               type="button"
               onClick={() => onFollowUp?.(f)}
-              className="block w-full text-left text-[12px] text-muted/65 hover:text-accent hover:bg-accent/8 px-3 py-2 rounded-md transition-colors cursor-pointer border border-transparent hover:border-accent/25"
+              className="group block w-full text-left text-[12px] text-muted/75 hover:text-text/85 hover:bg-white/[0.03] px-3 py-2 rounded-md transition-colors cursor-pointer border border-border/20 hover:border-accent/30"
             >
-              <span className="text-muted/40 mr-1.5">→</span>
+              <span className="text-accent/50 group-hover:text-accent/80 mr-1.5 transition-colors">→</span>
               {f}
             </button>
           ))}
@@ -275,33 +275,33 @@ export default function AssistantMessageView({
               <button
                 type="button"
                 onClick={() => setTraceOpen(o => !o)}
-                className="flex items-center gap-2 w-full text-left text-[11px] text-muted/40 hover:text-muted/65 transition-colors pl-3 border-l-2 border-border/20 hover:border-border/45 py-1 group"
+                className="flex items-center gap-2 w-full text-left text-[11px] text-muted/60 hover:text-muted/85 transition-all pl-3 border-l-2 border-border/30 hover:border-accent/35 hover:bg-white/[0.025] py-1.5 rounded-r group"
               >
                 <span className="font-medium">Audit trace</span>
                 {stageCount > 0 && (
                   <>
-                    <span className="text-muted/25">·</span>
+                    <span className="text-muted/35">·</span>
                     <span>{stageCount} stages</span>
                   </>
                 )}
                 {snPassed !== null && snTotal !== null && (
                   <>
-                    <span className="text-muted/25">·</span>
+                    <span className="text-muted/35">·</span>
                     <span>Neutrality {snPassed}/{snTotal}</span>
                   </>
                 )}
                 {citationCount > 0 && (
                   <>
-                    <span className="text-muted/25">·</span>
+                    <span className="text-muted/35">·</span>
                     <span>{citationCount} source{citationCount !== 1 ? "s" : ""}</span>
                   </>
                 )}
                 {/* Rotating chevron */}
                 <svg
-                  className="ml-auto opacity-35 group-hover:opacity-60 flex-shrink-0"
+                  className="ml-auto opacity-50 group-hover:opacity-80 flex-shrink-0"
                   style={{
                     transform: traceOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform 220ms ease",
+                    transition: "transform 220ms ease, opacity 120ms ease",
                   }}
                   width="12"
                   height="12"
@@ -311,7 +311,7 @@ export default function AssistantMessageView({
                   <path
                     d="M3 4.5L6 7.5L9 4.5"
                     stroke="currentColor"
-                    strokeWidth="1.2"
+                    strokeWidth="1.4"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />

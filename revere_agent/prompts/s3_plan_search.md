@@ -51,6 +51,19 @@ whether the work-requirement expansion applied to SNAP, TANF, or both."
 
 If `needs_search=false`, leave this null.
 
+## Concision requirements
+- `rationale`: **one sentence, ≤ 35 words.** State the search decision and
+  the primary reason. Example: "Search is needed because the query concerns
+  a specific 2023 legislative event with details that should be verified
+  against current sources."
+- `why_model_knowledge_insufficient`: **one sentence, ≤ 30 words,** or null
+  if `needs_search=false`. Name the specific missing facts or freshness
+  concern. Example: "Exact timeline, deal terms, and party vote counts
+  should be checked against current sources." Do not repeat the same
+  reason already given in `rationale`.
+- If `needs_search=false`: write a short `rationale` and set
+  `why_model_knowledge_insufficient` to null.
+
 ## Critical
 - Do not answer the user. Just produce the plan.
 - Do not invent sources you wish existed; let the executor handle retrieval.

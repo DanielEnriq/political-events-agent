@@ -245,6 +245,32 @@ export default function ChatShell() {
               );
             },
 
+            onStageNote(stageId: string, text: string) {
+              const msgId = activeIdRef.current;
+              if (!msgId) return;
+              setChats(prev =>
+                prev.map(c => {
+                  if (c.id !== thisChatId) return c;
+                  return {
+                    ...c,
+                    messages: c.messages.map(m => {
+                      if (m.id !== msgId || !isAssistant(m)) return m;
+                      const prevHistory = m.liveNoteHistory?.[stageId] ?? [];
+                      const lastNote = prevHistory[prevHistory.length - 1];
+                      const newHistory = lastNote === text
+                        ? prevHistory
+                        : [...prevHistory, text].slice(-4);
+                      return {
+                        ...m,
+                        liveNotes: { ...(m.liveNotes ?? {}), [stageId]: text },
+                        liveNoteHistory: { ...(m.liveNoteHistory ?? {}), [stageId]: newHistory },
+                      };
+                    }),
+                  };
+                })
+              );
+            },
+
             onComplete(payload: CompletePayload) {
               runningRef.current = false;
               const msgId = activeIdRef.current;
