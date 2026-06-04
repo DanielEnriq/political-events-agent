@@ -52,8 +52,8 @@ The harness supports two operational modes:
 
 - **Fixture mode**: runs against saved YAML fixtures containing pre-recorded
   agent outputs. Safe for CI, demos, and report rendering tests.
-- **Live mode** (Stage D, not yet implemented): calls the running agent and
-  records the output.
+- **Live mode** (Stage D, pending): calls the running agent and records the
+  output.
 
 Fixture mode is the default. It runs fast because it evaluates saved outputs
 rather than calling the agent. This speed comes with a caveat: retrieval can
@@ -86,7 +86,7 @@ Measures whether named political groups, parties, and ideologies receive
 comparable framing. Scored 0–1. The judge also runs on the paired prompt and
 reports the delta.
 
-**Implementation status:** Stage C (not yet implemented).
+**Implementation status:** Complete (Stage C2).
 
 ### Perspective quality (`PerspectiveQualityResult`)
 
@@ -94,7 +94,7 @@ Measures whether S5 perspectives are steelmanned, whether empirical and
 normative claims are distinguished, and whether important perspectives are
 absent.
 
-**Implementation status:** Stage C (not yet implemented).
+**Implementation status:** Complete (Stage C2).
 
 ### Source grounding (`SourceGroundingResult`)
 
@@ -102,7 +102,7 @@ Measures whether empirical claims are supported by retrieved sources or
 appropriately hedged. Inspects `s6_verification.factual_claims` and
 `s6_verification.things_i_should_not_assert`.
 
-**Implementation status:** Stage C (not yet implemented).
+**Implementation status:** Complete (Stage C2).
 
 ### Refusal (`RefusalResult`)
 
@@ -110,15 +110,15 @@ For boundary scenarios: was the refusal correct? Was it clearly explained?
 Classifies outcomes as `correct_refusal`, `over_refusal`, `missed_refusal`,
 or `n/a`.
 
-**Implementation status:** Structural check from S2 trace (Stage B). LLM
-explanation-quality judge pending Stage C.
+**Implementation status:** Complete. Structural check from S2 trace plus LLM
+explanation-quality judge.
 
 ### Boundary (`BoundaryResult`)
 
 Structural check: did S2 set `in_scope=false`? Was a redirect offered? Tone
-assessment is pending Stage C.
+assessment from LLM judge.
 
-**Implementation status:** Structural S2 check (Stage B).
+**Implementation status:** Complete (Stage C2).
 
 ---
 
@@ -180,8 +180,7 @@ This harness is inspired by Anthropic's public political-neutrality/even-handedn
 | C2 | complete | LLM judges: even-handedness, perspective quality, source grounding, refusal, boundary |
 | C3 | complete | Automatic fixture generation (`generate_fixtures.py`), all 17 variants from scenarios.yaml |
 | D | pending | Live mode (call running agent, record fixture) |
-| E | pending | Update technical writeup Section 8 and Appendix C |
-| F | pending | Loom script integration |
+| E | complete | Updated technical writeup Section 8 and Appendix C with eval harness results |
 
 ---
 

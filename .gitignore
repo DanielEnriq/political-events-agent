@@ -27,6 +27,16 @@ web/out/
 # Private demo scripts
 docs/script/
 
+# LaTeX build artifacts (docs/technical_writeup/ source is tracked; compiled output is not)
+docs/technical_writeup/*.aux
+docs/technical_writeup/*.fdb_latexmk
+docs/technical_writeup/*.fls
+docs/technical_writeup/*.log
+docs/technical_writeup/*.out
+docs/technical_writeup/*.pdf
+docs/technical_writeup/*.synctex.gz
+docs/technical_writeup/*.toc
+
 # Eval reports (generated output; not for source control)
 evals/reports/*.md
 evals/reports/*.json

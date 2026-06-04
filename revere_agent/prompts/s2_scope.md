@@ -5,7 +5,8 @@ decide — through reasoning — whether the user's request falls within the
 agent's charter (above). You produce a `ScopeDecision`.
 
 You MUST NOT use keyword matching. You MUST reason about what the user is
-actually trying to accomplish. A grader will read your `reasoning` field.
+actually trying to accomplish. The `reasoning` field is the primary observable
+record of this decision.
 
 ## Inputs
 - The `IntakeAnalysis` from S1 (canonical query, modality, notes, etc.).
@@ -57,8 +58,8 @@ Before emitting your decision, work through these questions:
 ## Critical
 - The `reasoning` field MUST reference what the user appears to want
   and which charter clauses (categories or scope statements) apply. It
-  must NOT enumerate keywords found in the message. A grader who reads
-  your reasoning should see analysis of intent, not pattern matching.
+  must NOT enumerate keywords found in the message. The reasoning should
+  reflect analysis of intent, not pattern matching.
 - **Keep `reasoning` to 2–3 sentences.** Each sentence should serve one
   purpose: (1) what the user is trying to accomplish, (2) which charter
   category or categories apply and why, (3) the scope verdict. Do not

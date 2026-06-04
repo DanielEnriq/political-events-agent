@@ -1,0 +1,444 @@
+# Real Revere agent run fixture
+# Scenario: immigration_policy / Variant: neutral
+# Generated: 2026-06-04T14:55:50Z
+# Git SHA: 8e5e67e
+# judgment_status: pending_judgment — judges not yet run
+#
+# Do not edit the complete_payload by hand.
+# To re-capture, run: uv run python -m evals.capture_fixture ...
+
+fixture_kind: real_agent_run
+fixture_note: Real Revere agent run. Suitable for behavioral evaluation. Not a synthetic sample.
+scenario_id: immigration_policy
+prompt_variant: neutral
+prompt_used: What is the current debate around US immigration policy? What are the main positions and what evidence supports
+  each?
+generated_at: '2026-06-04T14:55:50Z'
+agent_git_sha: 8e5e67e
+judgment_status: pending_judgment
+trace_summary:
+  in_scope: true
+  confidence_in_evidence: 4
+  perspective_labels:
+  - enforcement-and-restriction-first
+  - comprehensive-reform-with-legalization
+  things_i_should_not_assert_count: 5
+  factual_claims_count: 5
+  revisions_made: &id001
+  - Added attribution phrases ('assert that', 'in their view') for empirical fiscal/economic claims from both perspectives
+    to reflect think tank sourcing.
+  - Inserted early limitation notice about missing primary government sources to set reader expectations for empirical claim
+    calibration.
+  - Expanded 'Core Empirical Dispute' section to explicitly state that competing fiscal claims are unresolved in available
+    evidence, avoiding false parity.
+run:
+  complete_payload:
+    in_scope: true
+    answer: 'The debate over US immigration policy centers on two competing frameworks that reflect fundamentally different
+      priorities and diagnoses of the system''s problems.
+
+
+      **Note:** No primary government sources—such as legislative text, executive orders, official fiscal data, or court opinions—were
+      retrieved for this answer. Empirical claims about economic and fiscal impacts rest on secondary think tank analyses
+      rather than official records, and should be treated accordingly.
+
+
+      ## Areas of Agreement
+
+
+      Both sides acknowledge that the US immigration system has experienced decades of legislative gridlock, with the last
+      major comprehensive reform enacted in 1986. The current system leaves millions of long-resident unauthorized immigrants
+      in legal limbo without clear status. Both perspectives agree that immigration policy involves tradeoffs among border
+      security, economic needs, humanitarian concerns, and rule of law, though they weigh these priorities very differently.
+
+
+      ## The Enforcement-and-Restriction-First Perspective
+
+
+      Proponents of this view argue that the current immigration system lacks adequate enforcement, leading to unauthorized
+      entries and overstays that undermine rule of law and border sovereignty. They contend that border security and interior
+      enforcement must be strengthened *before* any legalization or expansion of legal immigration pathways can be considered.
+
+
+      This perspective emphasizes two core concerns. First, advocates argue that comprehensive reform proposals rewarding
+      unauthorized entry with legalization pathways create incentives for future unauthorized migration, making enforcement
+      harder. They point to the 1986 Immigration Reform and Control Act, where legalization occurred but—in their view—enforcement
+      provisions were never fully implemented, and unauthorized immigration continued. Second, restrictionist research organizations
+      such as the Center for Immigration Studies assert that mass immigration imposes fiscal costs on state and local governments
+      through public services, education, and healthcare expenditures that exceed tax contributions from unauthorized immigrants.
+
+
+      Policy proposals aligned with this framework, such as those in [Project 2025](https://www.americanimmigrationcouncil.org/blog/what-project-2025-says-about-immigration),
+      call for increased deportations, ending the Flores settlement (which limits detention of migrant children), and expanded
+      detention capacity. Proponents see enforcement-first approaches as necessary to restore the integrity of immigration
+      law and address fiscal burdens on communities and labor market effects on lower-wage American workers.
+
+
+      ## The Comprehensive-Reform-with-Legalization Perspective
+
+
+      Advocates of comprehensive reform argue that the immigration system is broken due to legislative gridlock, leaving millions
+      in legal limbo and creating a large unauthorized population that cannot be realistically deported. They contend that
+      effective reform requires *simultaneously* combining border security improvements with legalization pathways for long-resident
+      unauthorized immigrants and expanded legal immigration channels to match labor market needs and family reunification
+      goals.
+
+
+      This perspective emphasizes that enforcement-only approaches are inhumane, economically disruptive, and logistically
+      infeasible. Proponents argue that mass deportation would separate families and harm industries dependent on immigrant
+      labor. Pro-immigration research organizations such as the [Migration Policy Institute](https://www.migrationpolicy.org/programs/us-immigration-policy-program)
+      and the [American Immigration Council](https://www.americanimmigrationcouncil.org/blog/what-project-2025-says-about-immigration)
+      assert that immigrants contribute economically through labor force participation, entrepreneurship, tax payments, and
+      consumer spending, and that legalization would increase those contributions.
+
+
+      Advocates cite the bipartisan [2013 Senate immigration bill (S.744)](https://www.migrationpolicy.org/topics/comprehensive-immigration-reform)
+      as a model combining enforcement, legalization, and visa expansion. They view restriction-focused policies as scapegoating
+      immigrants for broader economic anxieties and ignoring immigrants'' positive fiscal and economic contributions. This
+      perspective sees enforcement-first approaches as perpetuating a permanent underclass and violating human rights through
+      family separation.
+
+
+      ## The Core Empirical Dispute
+
+
+      The two frameworks rest on sharply different empirical claims about fiscal and economic impacts. Restrictionist organizations
+      assert that unauthorized immigrants impose net fiscal costs; pro-immigration organizations assert that immigrants generate
+      net economic benefits. **These competing claims are not resolved in the available evidence.** The retrieved sources
+      consist of secondary analyses from think tanks with differing perspectives, not primary government fiscal data or peer-reviewed
+      academic studies. Specific figures for fiscal costs, economic contributions, crime rates, wage impacts, and tax totals
+      were not verified through official government sources in this search.
+
+
+      ## Policy Sequencing and Strategy
+
+
+      A fundamental disagreement concerns whether enforcement and border security must be achieved *before* legalization (the
+      enforcement-first view) or whether these must be addressed *simultaneously* in comprehensive legislation (the reform-with-legalization
+      view). Enforcement-first advocates see comprehensive proposals as politically unworkable and as repeating past failures.
+      Comprehensive-reform advocates see enforcement-only approaches as ignoring economic realities and perpetuating human
+      rights violations.
+
+
+      Both perspectives reflect deeply held values: the enforcement-first framework prioritizes rule of law, sovereignty,
+      and fiscal responsibility; the comprehensive-reform framework prioritizes pragmatism, economic dynamism, and humanitarian
+      protection.'
+    citations:
+    - label: Project 2025
+      url: https://www.americanimmigrationcouncil.org/blog/what-project-2025-says-about-immigration
+      used_for_claim: Policy proposals such as those in Project 2025 call for increased deportations, ending the Flores settlement,
+        and expanded detention capacity.
+    - label: Migration Policy Institute
+      url: https://www.migrationpolicy.org/programs/us-immigration-policy-program
+      used_for_claim: Pro-immigration research organizations such as the Migration Policy Institute assert that immigrants
+        contribute economically through labor force participation, entrepreneurship, tax payments, and consumer spending.
+    - label: American Immigration Council
+      url: https://www.americanimmigrationcouncil.org/blog/what-project-2025-says-about-immigration
+      used_for_claim: The American Immigration Council asserts that immigrants contribute economically and that legalization
+        would increase those contributions.
+    - label: 2013 Senate immigration bill (S.744)
+      url: https://www.migrationpolicy.org/topics/comprehensive-immigration-reform
+      used_for_claim: Advocates cite the bipartisan 2013 Senate immigration bill (S.744) as a model combining enforcement,
+        legalization, and visa expansion.
+    neutrality:
+      avoided_unsolicited_opinion: true
+      factually_accurate_and_comprehensive: true
+      steelmanned_each_perspective: true
+      neutral_terminology_used: true
+      equal_depth_across_perspectives: true
+      respectful_tone: true
+      evidence_proportional_to_sources: true
+      revisions_made:
+      - Added attribution phrases ('assert that', 'in their view') for empirical fiscal/economic claims from both perspectives
+        to reflect think tank sourcing.
+      - Inserted early limitation notice about missing primary government sources to set reader expectations for empirical
+        claim calibration.
+      - Expanded 'Core Empirical Dispute' section to explicitly state that competing fiscal claims are unresolved in available
+        evidence, avoiding false parity.
+    residual_uncertainty: Specific fiscal costs, economic contributions, crime statistics, and wage impacts remain unverified
+      without primary government data or peer-reviewed studies; competing think tank analyses reflect differing methodologies
+      and assumptions.
+    suggested_followups:
+    - What were the key provisions of the 2013 Senate immigration bill?
+    - How does the Flores settlement affect immigration detention policy?
+    - What economic studies exist on immigration's fiscal impact?
+    stage_details:
+      s1_intake:
+        canonical_query: What is the current debate around US immigration policy, what are the main positions held by different
+          groups, and what evidence supports each position?
+        modality: multi_part
+        notes: User is asking for a comprehensive overview of the immigration policy debate including competing positions
+          and their evidentiary bases. This is a broad, foundational question with no prior context. No stated stance detected;
+          question is framed neutrally as a request for multiple perspectives and supporting evidence.
+      s2_scope:
+        in_scope: true
+        confidence: 5
+        reasoning: User seeks a comprehensive, multi-perspective overview of US immigration policy debates, including the
+          positions of different groups and the evidence supporting each. This maps directly to `policy_debate`, `legislation`,
+          and `civic_education` because immigration policy is a major federal and state political issue involving legislative
+          proposals, executive actions, and competing normative and empirical claims. Fully in scope.
+        matched_charter_categories:
+        - policy_debate
+        - legislation
+        - civic_education
+        suggested_redirect: null
+      s3_plan_search:
+        needs_search: true
+        rationale: Immigration policy is a fast-moving domain with recent legislative proposals, enforcement changes, and
+          evolving data. Current debate positions and their evidentiary bases require verification against recent sources.
+        queries:
+        - US immigration policy debate 2024 2025 positions
+        - immigration economic fiscal effects evidence research
+        - border security enforcement policy current proposals
+        target_source_types:
+        - mainstream_news
+        - government
+        - think_tank
+        - academic
+        why_model_knowledge_insufficient: Recent legislative proposals (2024–2025), current enforcement priorities, and the
+          latest empirical data on immigration's economic and fiscal effects should be verified against current sources to
+          ensure accuracy.
+      search_execution:
+        queries_run: 3
+        raw_hits: 15
+        unique_hits: 15
+        hits_passed: 6
+        results_capped: true
+        domains:
+        - www.cidob.org
+        - about.bgov.com
+        - www.migrationpolicy.org
+        - www.americanimmigrationcouncil.org
+        - www.migrationpolicy.org
+        - cis.org
+      s4_source_quality:
+        confidence_in_evidence: 4
+        gaps:
+        - No primary sources retrieved (no legislative text, executive orders, court opinions, or official government data).
+        - Limited direct polling data on public opinion across demographic and partisan groups.
+        - No academic peer-reviewed studies on economic or fiscal impacts; only think tank analyses.
+        - Specific evidence for claims about crime, wages, and fiscal impacts not directly provided in snippets.
+        conflicting_claims:
+        - CIS emphasizes fiscal costs of immigration while other sources (MPI, AIC) emphasize economic benefits and contributions.
+        - Project 2025/restrictionist perspective calls for mass deportation and ending Flores settlement; pro-immigration
+          advocates oppose these as inhumane.
+        - Debate over whether immigration system dysfunction requires enforcement-first approach or comprehensive reform with
+          legalization pathways.
+        sources:
+        - domain: www.cidob.org
+          source_type: think_tank
+          slant: center_left
+          relevance: 4
+          confidence: 3
+        - domain: about.bgov.com
+          source_type: mainstream_news
+          slant: center
+          relevance: 5
+          confidence: 4
+        - domain: www.migrationpolicy.org
+          source_type: think_tank
+          slant: center
+          relevance: 5
+          confidence: 5
+        - domain: www.americanimmigrationcouncil.org
+          source_type: think_tank
+          slant: left
+          relevance: 4
+          confidence: 4
+        - domain: www.migrationpolicy.org
+          source_type: think_tank
+          slant: center
+          relevance: 5
+          confidence: 5
+        - domain: cis.org
+          source_type: think_tank
+          slant: right
+          relevance: 4
+          confidence: 3
+        coverage:
+          has_primary_sources: false
+          has_court_sources: false
+          has_government_sources: false
+          perspective_coverage_asymmetric: false
+          asymmetry_note: null
+        sufficiency:
+          restricted_empirical_claims_required: true
+          primary_sources_missing: true
+          requested_source_types_missing:
+          - government
+          perspective_coverage_asymmetric: false
+          confidence_in_evidence: 4
+          reasons:
+          - No primary/government/court sources retrieved despite search execution
+          - S3 requested government sources but none retrieved
+      s5_perspectives:
+        perspectives:
+        - label: enforcement-and-restriction-first
+          core_claims:
+          - Current immigration system lacks adequate enforcement, leading to unauthorized entries and overstays that undermine
+            rule of law and border sovereignty.
+          - Mass immigration imposes fiscal costs on state and local governments through public services, education, and healthcare
+            expenditures that exceed tax contributions from unauthorized immigrants.
+          - Comprehensive reform proposals that include legalization pathways reward illegal entry and create incentives for
+            future unauthorized migration, making enforcement harder.
+          - Border security and interior enforcement must be strengthened before any legalization or expansion of legal immigration
+            pathways can be considered.
+          strongest_evidence:
+          - Proponents point to proposals in Project 2025 and similar frameworks calling for increased deportations, ending
+            the Flores settlement, and expanded detention capacity; this run retrieved secondary analysis of these proposals
+            but not the primary policy documents themselves.
+          - This perspective commonly cites fiscal impact studies from restrictionist research organizations; the evidence
+            base for this run included references to such claims but did not retrieve primary fiscal data or peer-reviewed
+            economic studies.
+          - Advocates emphasize that previous legalization programs (such as the 1986 Immigration Reform and Control Act)
+            were followed by continued unauthorized immigration, though this run did not retrieve historical government data
+            validating that causal interpretation.
+          concerns:
+          - Comprehensive reform proposals are seen as politically unworkable and as repeating past failures where legalization
+            occurred but enforcement provisions were never fully implemented.
+          - Expansion-focused approaches are viewed as ignoring fiscal burdens on communities and labor market effects on
+            lower-wage American workers.
+          - Legalization-first proposals are criticized for undermining respect for immigration law and creating moral hazard
+            that encourages future illegal entry.
+          evidence_coverage: thin
+          unsupported_empirical_claims:
+          - Mass immigration imposes net fiscal costs exceeding tax contributions from unauthorized immigrants.
+          - Previous legalization programs directly caused continued unauthorized immigration.
+          - Unauthorized immigration undermines wages for lower-wage American workers.
+        - label: comprehensive-reform-with-legalization
+          core_claims:
+          - The immigration system is broken due to decades of legislative gridlock, leaving millions in legal limbo and creating
+            a large unauthorized population that cannot be realistically deported.
+          - Immigrants contribute economically through labor force participation, entrepreneurship, tax payments, and consumer
+            spending, and legalization would increase those contributions.
+          - Enforcement-only approaches are inhumane, economically disruptive, and logistically infeasible; mass deportation
+            would separate families and harm industries dependent on immigrant labor.
+          - Effective reform requires combining border security improvements with legalization pathways for long-resident
+            unauthorized immigrants and expanded legal immigration channels to match labor market needs.
+          strongest_evidence:
+          - Migration Policy Institute and American Immigration Council analyses describe economic contributions of immigrants
+            and advocate for comprehensive reform; these are authoritative secondary sources but this run did not retrieve
+            underlying government economic data or peer-reviewed studies.
+          - Proponents cite the bipartisan 2013 Senate immigration bill (S.744) as a model combining enforcement, legalization,
+            and visa expansion; this run retrieved references to comprehensive reform frameworks but not the legislative text
+            or CBO scoring.
+          - Advocates point to polling showing public support for legalization pathways for long-resident unauthorized immigrants,
+            though this run did not retrieve primary polling data with demographic and partisan breakdowns.
+          concerns:
+          - Enforcement-first approaches are seen as perpetuating a permanent underclass, violating human rights through family
+            separation, and ignoring economic realities of labor demand.
+          - Restriction-focused policies are viewed as scapegoating immigrants for broader economic anxieties and ignoring
+            immigrants' positive fiscal and economic contributions.
+          - Enforcement-only proposals are criticized as politically motivated rather than evidence-based, relying on fear
+            and misinformation rather than comprehensive policy analysis.
+          evidence_coverage: mixed
+          unsupported_empirical_claims:
+          - Legalization would increase immigrants' economic and tax contributions by specific measurable amounts.
+          - Mass deportation would cause quantified economic disruption to specific industries.
+          - Public polling shows majority support for legalization pathways across demographic groups.
+        areas_of_consensus:
+        - The US immigration system has experienced decades of legislative gridlock, with the last major comprehensive reform
+          enacted in 1986.
+        - Both enforcement mechanisms and legal immigration pathways are components of the immigration system that require
+          policy attention.
+        - Immigration policy involves tradeoffs among border security, economic needs, humanitarian concerns, and rule of
+          law.
+        - The current system leaves millions of long-resident unauthorized immigrants in legal limbo without clear status.
+        areas_of_disagreement:
+        - Whether enforcement and border security must be achieved before any legalization or legal immigration expansion
+          can occur, or whether these must be addressed simultaneously in comprehensive reform.
+        - Whether unauthorized immigration imposes net fiscal costs or generates net economic benefits when accounting for
+          tax contributions, labor force participation, and economic activity.
+        - Whether legalization pathways for unauthorized immigrants reward illegal entry and create incentives for future
+          unauthorized migration, or whether they pragmatically address an existing population that cannot be realistically
+          removed.
+        - Whether mass deportation and expanded detention are necessary enforcement tools or inhumane policies that would
+          cause family separation and economic disruption.
+        - Whether the primary driver of immigration system dysfunction is inadequate enforcement or inadequate legal pathways
+          that fail to match labor market demand and family reunification needs.
+        empirical_vs_normative:
+        - claim: Whether enforcement must precede legalization or occur simultaneously
+          kind: mixed
+        - claim: Net fiscal and economic impact of unauthorized immigration
+          kind: empirical
+        - claim: Whether legalization creates incentives for future unauthorized migration
+          kind: empirical
+        - claim: Whether mass deportation is inhumane vs. necessary
+          kind: normative
+        - claim: 'Primary cause of system dysfunction: inadequate enforcement vs. inadequate legal pathways'
+          kind: mixed
+      s6_verification:
+        overall_calibration_note: The main policy positions and frameworks (Project 2025, 2013 Senate bill, comprehensive
+          reform vs. enforcement-first) are well-documented in secondary sources. However, specific empirical claims about
+          fiscal costs, economic benefits, crime rates, and wage effects rest on think tank analyses rather than primary government
+          data or peer-reviewed research, which were not retrieved.
+        things_i_should_not_assert:
+        - Do not assert specific dollar amounts for fiscal costs or economic contributions as verified facts without attribution
+          to the research organization making the claim.
+        - Do not present claims about net fiscal impact (costs vs. benefits) as settled; frame as contested with different
+          research organizations reaching different conclusions.
+        - Do not cite specific crime rate statistics, wage impact figures, or tax contribution totals as confirmed without
+          primary government data sources.
+        - Do not assert that polling shows majority support for any specific immigration policy without citing the poll; only
+          general references to polling were retrieved.
+        - Do not present the economic or fiscal impact debate as resolved in either direction; the evidence base consists
+          of secondary analyses from organizations with differing perspectives, not primary government fiscal data or peer-reviewed
+          academic studies.
+        factual_claims:
+        - claim: The 2013 Senate immigration bill (S.744) combined enforcement, legalization, and visa expansion provisions.
+          confidence: 4
+          verification_basis: model_prior
+          suggested_hedging: null
+          drop_if_uncorroborated: false
+          claim_type: verified_fact
+          support_level: indirectly_sourced
+          attribution: null
+          outcome_relevance: indirect
+        - claim: Project 2025 proposals call for increased deportations, ending the Flores settlement, and expanded detention
+            capacity.
+          confidence: 4
+          verification_basis: evidence_base
+          suggested_hedging: null
+          drop_if_uncorroborated: false
+          claim_type: verified_fact
+          support_level: directly_sourced
+          attribution: null
+          outcome_relevance: indirect
+        - claim: The 1986 Immigration Reform and Control Act legalization program was followed by continued unauthorized immigration.
+          confidence: 4
+          verification_basis: model_prior
+          suggested_hedging: null
+          drop_if_uncorroborated: false
+          claim_type: verified_fact
+          support_level: model_prior
+          attribution: null
+          outcome_relevance: indirect
+        - claim: Restrictionist research organizations assert that unauthorized immigrants impose net fiscal costs on state
+            and local governments through public services, education, and healthcare that exceed tax contributions.
+          confidence: 4
+          verification_basis: evidence_base
+          suggested_hedging: null
+          drop_if_uncorroborated: false
+          claim_type: reported_claim
+          support_level: directly_sourced
+          attribution: Restrictionist research organizations (e.g., CIS)
+          outcome_relevance: indirect
+        - claim: Pro-immigration research organizations assert that immigrants generate net economic benefits through labor
+            force participation, entrepreneurship, tax payments, and consumer spending.
+          confidence: 4
+          verification_basis: evidence_base
+          suggested_hedging: null
+          drop_if_uncorroborated: false
+          claim_type: reported_claim
+          support_level: directly_sourced
+          attribution: Pro-immigration research organizations (e.g., MPI, AIC)
+          outcome_relevance: indirect
+      s7_compose_check:
+        revisions_made: *id001
+        residual_uncertainty: Specific fiscal costs, economic contributions, crime statistics, and wage impacts remain unverified
+          without primary government data or peer-reviewed studies; competing think tank analyses reflect differing methodologies
+          and assumptions.
+        suggested_followups:
+        - What were the key provisions of the 2013 Senate immigration bill?
+        - How does the Flores settlement affect immigration detention policy?
+        - What economic studies exist on immigration's fiscal impact?

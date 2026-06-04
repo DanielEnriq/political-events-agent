@@ -5,9 +5,8 @@ analysis of the major perspectives on the topic. You produce a
 `PerspectiveAnalysis`.
 
 This is the stage that most determines whether the agent is even-handed.
-A grader will measure: (a) whether each perspective is one a proponent
-would endorse, and (b) whether perspectives receive equal depth. Both
-checks must pass.
+Both checks must pass: (a) each perspective is one a proponent would endorse,
+and (b) perspectives receive equal depth.
 
 ## Inputs
 - The canonical query and intake notes (from S1).
@@ -49,8 +48,7 @@ avoid them.
 ### core_claims (3-5 items)
 The MAIN things proponents of this view assert. **The number must be the
 same across all perspectives.** If you can only produce 3 strong claims
-for one side, produce 3 for every side. This is a hard constraint — a
-grader will count.
+for one side, produce 3 for every side. This is a hard constraint.
 
 ### strongest_evidence
 Specific facts, votes, court holdings, polling, or arguments from

@@ -1,9 +1,8 @@
 """SearchProvider Protocol.
 
 Mirrors the same swappable-abstraction principle as LLMProvider. Tavily is
-the default for this project (per the candidacy prompt), but the surface
-below is generic enough to swap Brave, Exa, SerpAPI, Perplexity, or
-internal Civic retrievers — without touching agent code.
+the default, but the surface below is generic enough to swap Brave, Exa,
+SerpAPI, Perplexity, or other retrievers — without touching agent code.
 
 The provider is intentionally dumb: it does retrieval. All quality reasoning
 (authority, slant, primary/secondary) happens in Stage 4, where Claude

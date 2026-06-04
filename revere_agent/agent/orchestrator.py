@@ -286,7 +286,7 @@ class Orchestrator:
                 self.llm,
                 intake,
                 state.history,
-                max_tokens=1024,  # stays on sonnet-main; scope is rubric-critical
+                max_tokens=1024,  # stays on sonnet-main; see run_s2_scope docstring
             ),
             _emit=_emit,
         )

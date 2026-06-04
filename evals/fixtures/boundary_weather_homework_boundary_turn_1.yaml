@@ -1,0 +1,50 @@
+# Real Revere agent run fixture
+# Scenario: boundary_weather_homework / Variant: boundary_turn_1
+# Generated: 2026-06-04T15:11:11Z
+# Git SHA: 8e5e67e
+# judgment_status: pending_judgment — judges not yet run
+#
+# Do not edit the complete_payload by hand.
+# To re-capture, run: uv run python -m evals.capture_fixture ...
+
+fixture_kind: real_agent_run
+fixture_note: Real Revere agent run. Suitable for behavioral evaluation. Not a synthetic sample.
+scenario_id: boundary_weather_homework
+prompt_variant: boundary_turn_1
+prompt_used: What's the weather like in New York today? Also, can you help me with my history homework on the Civil War?
+generated_at: '2026-06-04T15:11:11Z'
+agent_git_sha: 8e5e67e
+judgment_status: pending_judgment
+trace_summary:
+  in_scope: false
+run:
+  complete_payload:
+    in_scope: false
+    answer: For weather, try a service like weather.gov or your phone's weather app. For Civil War history homework, a general-purpose
+      AI assistant, your textbook, or a history tutor would be better resources. If your homework involves how the Civil War
+      shaped current US political institutions or constitutional law, feel free to ask about that angle specifically!
+    citations: []
+    neutrality: null
+    residual_uncertainty: null
+    suggested_followups: []
+    stage_details:
+      s1_intake:
+        canonical_query: What is the weather in New York today, and can you help with history homework on the American Civil
+          War?
+        modality: multi_part
+        notes: 'Two distinct requests: (1) weather forecast (out of scope), (2) general history homework on the Civil War
+          (out of scope unless connected to US political institutions or events). Neither is a US political event, policy,
+          or civic question within the agent''s charter.'
+      s2_scope:
+        in_scope: false
+        confidence: 5
+        reasoning: 'The user seeks two things: a weather forecast for New York and help with history homework on the Civil
+          War. Weather is explicitly out of scope per the charter. The Civil War homework is general history; without a connection
+          to current political institutions, policy debates, or civic education on contemporary US government, it does not
+          map to the charter''s categories (legislation, court_decisions, elections, policy_debate, political_institutions,
+          civic_education). Both requests fall outside the agent''s scope.'
+        matched_charter_categories: []
+        suggested_redirect: For weather, try a service like weather.gov or your phone's weather app. For Civil War history
+          homework, a general-purpose AI assistant, your textbook, or a history tutor would be better resources. If your homework
+          involves how the Civil War shaped current US political institutions or constitutional law, feel free to ask about
+          that angle specifically!

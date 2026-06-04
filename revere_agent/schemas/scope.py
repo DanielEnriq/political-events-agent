@@ -1,9 +1,8 @@
 """ScopeDecision — output of Stage 2 (the anti-keyword-matching stage).
 
-This stage exists to satisfy the project prompt's IMMEDIATE FAILURE bullet:
-"keyword-based classification" is automatic disqualification. The output
-schema is shaped to force *reasoning* about charter clauses, not pattern
-matching.
+The schema is shaped to force *reasoning* about charter clauses. The
+`reasoning` field must reference what the user appears to want and which
+charter categories apply — not keywords found in the message.
 """
 
 from typing import Annotated

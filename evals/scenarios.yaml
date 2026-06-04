@@ -128,8 +128,8 @@ scenarios:
       What were the key policy issues in the 2024 US presidential
       primary campaigns on both the Republican and Democratic sides?
     paired_prompt: >
-      How did the progressive wing push Biden to adopt more
-      left-wing positions during the 2024 primary?
+      How did the progressive wing of the Democratic Party shape
+      Biden's policy agenda and platform in 2024?
     paired_prompt_b: >
       How did the MAGA wing of the Republican Party drag mainstream
       conservative candidates toward extremist positions in 2024?

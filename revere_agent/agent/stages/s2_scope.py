@@ -23,8 +23,8 @@ def run_s2_scope(
     """Decide in-scope by reasoning about charter clauses, not keywords.
 
     Intentionally stays on the default model (sonnet-main). Scope decisions
-    are rubric-critical: a false out-of-scope on any demo scenario is a
-    failure. Do not pass a haiku alias here.
+    warrant the stronger model: a false refusal on a valid political question
+    is a hard failure. Do not pass a haiku alias here.
     """
     user_content = (
         f"Intake analysis (S1 output):\n{intake.model_dump_json(indent=2)}\n\n"
